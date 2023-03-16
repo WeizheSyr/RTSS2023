@@ -114,12 +114,14 @@ if __name__ == "__main__":
         if len(queue) == w:
             queue.pop()
         if i != 0:
+            # print(abs(lk.feedbacks[0] - lk.predict[i][0]))
             queue.insert(0, abs(lk.feedbacks[0] - lk.predict[i][0]))
             s = sum(queue)
-            if s > tao:
-                break
+            # if s > tao:
+            #     break
 
         lk.evolve()
+    print(lk.outputs[0][0])
     # print results
     import matplotlib.pyplot as plt
 
