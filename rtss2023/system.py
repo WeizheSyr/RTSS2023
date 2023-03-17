@@ -6,7 +6,7 @@ class System:
         self.data_file = ('res/1_1data_collect_all_points' + exp.name + '.csv')
         exp_name = f"{exp.name}"
         # logger.info(f"{exp_name:=^40}")
-        detector = detector
+        self.detector = detector
 
         # x_update = None
         self.index_list = []
@@ -39,22 +39,29 @@ class System:
                 self.i += 1
                 cur_y = exp.model.cur_y
 
-                if attack is not None and exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration:
-                    exp.model.cur_y = exp.model.cur_y + attack[exp.model.cur_index - exp.attack_start_index]
+                if attack is not None and exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration - 1:
+                    # exp.model.cur_y = exp.model.cur_y + attack[exp.model.cur_index - exp.attack_start_index]
+                    print(attack[exp.model.cur_index - exp.attack_start_index])
+                    exp.model.cur_y[0] = exp.model.cur_y[0] + attack[exp.model.cur_index - exp.attack_start_index]
                     # print(f'exp.model.cur_y:{exp.model.cur_y}')
                 # exp.model.cur_y, end_query = self.query.launch(exp.model.cur_y, exp.model.cur_index, query_type)
                 delta_y = exp.model.cur_y - cur_y
-                residual = exp.model.predict[exp.model.cur_index] - exp.model.cur_y
+                residual = exp.model.predict[exp.model.cur_index][0] - exp.model.cur_y[0]
                 # x_update, P_update, residual = kf.one_step(x_update, kf_P, exp.model.cur_u, exp.model.cur_y)
                 # exp.model.cur_feedback = x_update
                 # kf_P = P_update
-                if detector.name =='CUSUM':
-                    # detector = CUSUM(threshold=0.6, drift=0.1)
-                    alarm = False
-                    for i in range(residual.size):
-                        alarm = alarm or detector.detect(residual[i])
-                else:
-                    alarm = detector.detect(residual)
+                # if detector.name =='CUSUM':
+                #     # detector = CUSUM(threshold=0.6, drift=0.1)
+                #     alarm = False
+                #     for i in range(residual.size):
+                #         alarm = alarm or detector.detect(residual[i])
+                # else:
+                #     alarm = detector.detect(residual)
+                # print(residual)
+                alarm = self.detector.detect(residual)
+                # print(alarm)
+                if alarm:
+                    break
 
 
                 # logger.debug(f"i = {exp.model.cur_index}, state={exp.model.cur_x}, update={x_update},y={exp.model.cur_y}, residual={residual}, alarm={alarm}")
@@ -67,7 +74,7 @@ class System:
                     self.y_list.append(exp.model.cur_y)
                     self.control_list.append(exp.model.cur_u)
                     self.alarm_list.append(alarm)
-                    self.residual_list.append(detector.gp)
+                    # self.residual_list.append(detector.gp)
                     # self.g.append(detector.g)
                     self.delta_y_list.append(delta_y)
                     self.predict_list.append(exp.model.predict[exp.model.cur_index])

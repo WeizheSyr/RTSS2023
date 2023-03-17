@@ -4,7 +4,7 @@ from utils.attack import Attack
 
 class rlc_circuit_bias:
     name = 'rlc_circuit'
-    max_index = 1000
+    max_index = 500
     dt = 0.02
     ref = [np.array([3])] * (max_index + 1)
     noise = {
@@ -18,6 +18,6 @@ class rlc_circuit_bias:
         }
     }
     model = RlcCircuit('test', dt, max_index, noise)
-    attack_start_index = 500
+    attack_start_index = 300
     bias = np.array([-0.6, 0, 0, 0])
     attack = Attack('bias', bias, attack_start_index)
