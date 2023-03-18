@@ -6,7 +6,8 @@ class rlc_circuit_bias:
     name = 'rlc_circuit'
     max_index = 500
     dt = 0.02
-    ref = [np.array([3])] * (max_index + 1)
+    # ref = [np.array([2])] * (max_index + 1)
+    ref = [np.array([2])] * 201 + [np.array([3])] * 200 + [np.array([2])] * 100
     noise = {
         'process': {
             'type': 'white',

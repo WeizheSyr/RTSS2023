@@ -3,7 +3,7 @@ import numpy as np
 # window based detector
 
 class window:
-    def __init__(self, w=10, tao=3):
+    def __init__(self, w=10, tao=0.5):
         self.w = w
         self.tao = tao
         self.r = 0
