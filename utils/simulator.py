@@ -237,8 +237,8 @@ class Simulator:
             self.cur_y += self.m_noise[self.cur_index]
         assert self.cur_x.shape == (self.n,)
         assert self.cur_y.shape == (self.p,)
-        self.states[self.cur_index] = deepcopy(self.cur_x)
-        self.outputs[self.cur_index] = deepcopy(self.cur_y)
+        self.states[self.cur_index] = deepcopy(self.cur_x)  # x
+        self.outputs[self.cur_index] = deepcopy(self.cur_y) # \widetide x
 
         # prepare feedback
         if self.feedback_type:
@@ -248,7 +248,6 @@ class Simulator:
             self.cur_feedback = None
 
         # predict
-        self.predict[self.cur_index] = self.sysd.A @ self.cur_feedback + self.sysd.B @ self.cur_u
-        self.predict[self.cur_index] = self.predict[self.cur_index] + self.p_noise_1[self.cur_index]
+        self.predict[self.cur_index] = self.sysd.A @ self.cur_feedback + self.sysd.B @ self.cur_u   # hat x
 
         return self.cur_index
