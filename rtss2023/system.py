@@ -31,12 +31,27 @@ class System:
         self.v1 = [0]
         self.v2 = [0]
 
+        while True:
+            # if self.i == 0:
+            #     self.reference_list.append(exp.ref[self.i])
+                # random start states
+                # exp.model.cur_x = np.random.uniform(high=exp.model.cur_x, size=np.size(exp.model.cur_x))
+            exp.model.update_current_ref(exp.ref[self.i])
+            exp.model.evolve()
+            self.i += 1
+            self.real_cur_y = exp.model.cur_y
+            self.index_list.append(exp.model.cur_index)
+            self.reference_list.append(exp.ref[self.i])
+            self.y_list.append(exp.model.cur_y)
+            self.predict_list.append(exp.model.predict[exp.model.cur_index])
         # exp.attack_start_index = 170
         while True:
+            print(exp.model.cur_x)
             exp.model.update_current_ref(exp.ref[self.i])
             exp.model.evolve()
             if self.i == 0:
                 exp.model.cur_x = np.random.uniform(high=exp.model.cur_x, size=np.size(exp.model.cur_x))
+                print("exp.model.cur_x")
                 self.i += 1
             else:
                 self.i += 1
@@ -49,8 +64,8 @@ class System:
 
                 if exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration - 1:
                     step = exp.model.cur_index - exp.attack_start_index
-                    print(len(self.predict_list))
-                    print(exp.model.cur_index)
+                    # print(len(self.predict_list))
+                    # print(exp.model.cur_index)
                     pn = (self.predict_list[exp.model.cur_index - 2] - self.y_list[exp.model.cur_index - 2])[0] < 0 and -1 or 1
 
                     rsum = 0
@@ -58,9 +73,9 @@ class System:
                         rsum = rsum + abs(self.predict_list[exp.model.cur_index - t - 2] - self.y_list[exp.model.cur_index - t - 2])[0]
 
                     temp = detector.tao - rsum + abs(self.predict_list[exp.model.cur_index - 2] - self.y_list[exp.model.cur_index - 2])[0]
-                    print("temp")
-                    print(temp)
-                    print(pn)
+                    # print("temp")
+                    # print(temp)
+                    # print(pn)
 
                     if exp.model.cur_index == exp.attack_start_index:
                         if pn:
@@ -77,7 +92,7 @@ class System:
                         self.v2.append((exp.model.sysd.A @ [self.v1[step - 1], 0])[0] + 0.01)
 
                     exp.model.cur_y[0] = exp.model.cur_y[0] + attack[exp.model.cur_index - exp.attack_start_index]
-                    print(exp.model.cur_y)
+                    # print(exp.model.cur_y)
 
                 if exp.model.cur_index == exp.attack_start_index + attack_duration:
                     exp.model.reset()

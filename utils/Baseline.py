@@ -11,14 +11,14 @@ class rlc_circuit_bias:
     noise = {
         'process': {
             'type': 'white',
-            'param': {'C': np.eye(2) * 0.01}
+            'param': {'C': np.eye(2) * 0.001}
         },
         'measurement': {
             'type': 'white',
-            'param': {'C': np.eye(2) * 0.01}
+            'param': {'C': np.eye(2) * 0.001}
         }
     }
     model = RlcCircuit('test', dt, max_index, noise)
-    attack_start_index = 300
-    bias = np.array([-0.6, 0, 0, 0])
-    attack = Attack('bias', bias, attack_start_index)
+    attack_start_index = 200
+    # bias = np.array([0, 0, 0, 0])
+    # attack = Attack('bias', bias, attack_start_index)
