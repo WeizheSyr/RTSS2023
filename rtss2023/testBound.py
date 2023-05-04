@@ -4,7 +4,7 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-detector = window(10, 0.2)
+detector = window(10, 0.08)
 exp = rlc_circuit_bias
 # attack = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
 attack = [0]*50
@@ -21,8 +21,10 @@ print(ref)
 # print(real_y_arr)
 # y_arr = [x[0] for x in sys.y_list[:max_index + 1]]
 # print(y_arr)
-v_arr = [x for x in sys.v1[:max_index + 1]]
-print(v_arr)
+v1_arr = [x for x in sys.v11[:max_index + 1]]
+v2_arr = [x for x in sys.v22[:max_index + 1]]
+print(v1_arr)
+print(v1_arr)
 # p_arr = [x[0] for x in sys.predict_list[:max_index + 1]]
 
 # y_arr = [x for x in sys.residual_list[:max_index + 1]]
@@ -43,6 +45,7 @@ print(v_arr)
 # plt.plot(t_arr, ref, c='red', linestyle='-', label='ref')
 # plt.plot(t_arr, real_y_arr, c='green', linestyle='--', label='real_y_arr')
 # plt.plot(t_arr, p_arr, c='yellow', linestyle=':', label='bound')
-plt.plot(v_arr, c='blue', linestyle=':', label='y_arr')
+plt.plot(v1_arr, c='blue', linestyle=':', label='y_arr')
+plt.plot(v2_arr, c='red', linestyle=':', label='y_arr')
 
 plt.show()

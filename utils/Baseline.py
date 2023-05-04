@@ -15,7 +15,7 @@ class rlc_circuit_bias:
         },
         'measurement': {
             'type': 'white',
-            'param': {'C': np.eye(2) * 0.001}
+            'param': {'C': np.eye(2) * 0.000}
         }
     }
     model = RlcCircuit('test', dt, max_index, noise)
