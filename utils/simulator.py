@@ -64,6 +64,7 @@ class Simulator:
         self.p_noise_1 = None
         self.p_noise_dist_1 = None
         self.predict = None
+        self.post_x = None
 
     def data_init(self):
         self.inputs = np.empty((self.max_index + 2, self.m), dtype=float)
@@ -228,6 +229,7 @@ class Simulator:
         res = solve_ivp(self.ode, ts, self.cur_x, args=(self.cur_u,))
         self.cur_index += 1
         self.cur_x = res.y[:, -1]
+        self.post_x = self.cur_x
         if self.model_type == 'linear':
             self.cur_x = self.sysd.A @ self.cur_x + self.sysd.B @ self.cur_u
         if self.p_noise is not None:  # process noise
@@ -248,6 +250,7 @@ class Simulator:
             self.cur_feedback = None
 
         # predict
-        self.predict[self.cur_index] = self.sysd.A @ self.cur_feedback + self.sysd.B @ self.cur_u   # hat x
+        self.predict = self.sysd.A @ self.post_x + self.sysd.B @ self.cur_u
+        # print(self.predict)
 
         return self.cur_index
