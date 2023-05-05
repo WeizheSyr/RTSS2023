@@ -203,6 +203,7 @@ class Simulator:
         self.cur_ref = ref
 
     def evolve(self, u=None, timer=None):
+        # print(self.cur_y)
         # record data
         self.feedbacks[self.cur_index] = deepcopy(self.cur_feedback)
         self.refs[self.cur_index] = deepcopy(self.cur_ref)

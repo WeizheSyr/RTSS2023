@@ -19,6 +19,8 @@ class window:
         self.queue.insert(0, abs(residual))
 
         self.r = sum(self.queue)
+        print("detector")
+        print(self.r)
         if self.r > self.tao:
             return True
         else:
