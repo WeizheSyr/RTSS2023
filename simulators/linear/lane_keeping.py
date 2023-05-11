@@ -100,7 +100,7 @@ if __name__ == "__main__":
     queue = []
     tao = 3
     start_point = 800
-    delt_x = 0.1
+    delt_x = 0.001
 
     for i in range(0, max_index + 1):
         assert lk.cur_index == i
@@ -108,20 +108,20 @@ if __name__ == "__main__":
 
         # attack here
         if i > start_point:
-            lk.feedbacks[0] += delt_x
+            lk.cur_feedback[0] += delt_x
 
         # detect
-        if len(queue) == w:
-            queue.pop()
-        if i != 0:
-            # print(abs(lk.feedbacks[0] - lk.predict[i][0]))
-            queue.insert(0, abs(lk.feedbacks[0] - lk.predict[i][0]))
-            s = sum(queue)
-            # if s > tao:
-            #     break
+        # if len(queue) == w:
+        #     queue.pop()
+        # if i != 0:
+        #     # print(abs(lk.feedbacks[0] - lk.predict[i][0]))
+        #     queue.insert(0, abs(lk.feedbacks[0] - lk.predict[i][0]))
+        #     s = sum(queue)
+        #     # if s > tao:
+        #     #     break
 
         lk.evolve()
-    print(lk.outputs[0][0])
+    # print(lk.outputs[0][0])
     # print results
     import matplotlib.pyplot as plt
 
