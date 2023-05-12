@@ -21,8 +21,8 @@ B = np.concatenate((np.zeros((4, 3)), np.eye(4)), axis=1).T
 x_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 # control parameters
-R = np.eye(4) * 0.0008
-Q = np.eye(7) * 1.2
+R = np.eye(4) * 0.00025
+Q = np.eye(7) * 1
 
 control_limit = {
     'lo': np.array([-5]),
@@ -80,7 +80,7 @@ class Platoon(Simulator):
 if __name__ == "__main__":
     max_index = 800
     dt = 0.02
-    ref = [np.array([1])] * 301 + [np.array([2])] * 300 + [np.array([1])] * 200
+    ref = [np.array([1])] * 301 + [np.array([1])] * 300 + [np.array([1])] * 200
     noise = {
         'process': {
             'type': 'white',
@@ -94,6 +94,10 @@ if __name__ == "__main__":
         # attack here
         platoon.evolve()
     # print results
+    print("#############")
+    print(A)
+    print("#############")
+    print(platoon.sysd.A)
     import matplotlib.pyplot as plt
 
     t_arr = np.linspace(0, 10, max_index + 1)
