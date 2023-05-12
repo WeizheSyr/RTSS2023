@@ -1,6 +1,6 @@
-import pulp as pl
 import os.path
 import numpy as np
+import cvxpy as cp
 
 cf_ = 155494.663
 cr_ = 155494.663
@@ -65,73 +65,84 @@ print("x_0")
 print(states[-50])
 
 print("y_0, y_1, y_2, y_3")
-y = np.empty([4,4])
+y = np.empty([4, 4])
 for i in range(4):
     y[i] = feedbacks[t+i]
 print(y)
-print(type(y[1]))
 
-delta = np.empty([4,4])
-delta[0] = np.ones(4) * 0.001
-delta[1] = abs(A) @ np.ones(4) * 0.001 + delta[0]
-delta[2] = abs(A) @ abs(A) @ np.ones(4) * 0.001 + delta[1]
-delta[3] = abs(A) @ abs(A) @ abs(A) @ np.ones(4) * 0.001 + delta[2]
+delta = np.empty([4, 4])
+delta[0] = np.empty(4)
+delta[1] = np.ones(4) * 0.001
+delta[2] = abs(A) @ np.ones(4) * 0.001 + delta[1]
+delta[3] = abs(A) @ abs(A) @ np.ones(4) * 0.001 + delta[2]
+print("delta")
+print(delta)
 
-# create the model
-model = pl.LpProblem(name="test", sense=pl.LpMinimize)
 
-# Initialize the decision variables
-x = pl.LpVariable.matrix("x", range(4), cat=pl.LpContinuous)
-gama = pl.LpVariable.matrix("gama", range(4), cat=pl.LpBinary)
-E = pl.LpVariable.matrix("E", (range(4), range(4)), cat=pl.LpContinuous)
+# print(A @ states[t])
+# print("u")
+# print(u[0])
+# print(B.shape)
+# print("@@@@@@@@@@@@@@@@@@@@@@@@@")
+# print(A @ states[t])
+# print("----------")
+# print(B @ u[0].reshape(1,1))
+# print("----------")
+# print(A @ states[t] + B @ u[0].reshape(1,1))
+# print("@@@@@@@@@@@@@@@@@@@@@@@@@")
+print(states[t])
+
 
 A_k = np.empty([4, 4, 4])
 A_k[0] = np.eye(4)
 A_k[1] = A
-A_k[2] = A @ A_k[1]
-A_k[3] = A @ A_k[2]
+A_k[2] = A @ A
+A_k[3] = A @ A @ A
 
 U = np.empty([4, 4, 1])
+u = u.reshape(4, 1)
 U[0] = np.empty([4, 1])
-U[1] = A_k[0] @ B * u[0] + U[0]
-U[2] = A_k[1] @ B * u[1] + U[1]
-U[3] = A_k[2] @ B * u[2] + U[2]
-
+U[1] = B @ u[0].reshape(1,1)
+U[2] = A @ (B @ u[0].reshape(1,1)) + B @ u[1].reshape(1,1)
+U[3] = A_k[2] @ (B @ u[0].reshape(1,1)) + A @ B @ u[1].reshape(1,1) + B @ u[2].reshape(1,1)
 print(U)
 
 U1 = np.empty([4, 4])
 for i in range(4):
     for j in range(4):
      U1[i][j] = U[i][j][0]
+print("U1")
+print(U1)
 
+x = cp.Variable(4, name="x")
+gama = cp.Variable(4, name="gama", boolean=True)
+E = cp.Variable([4, 4], name="E")
 
-# Add the constraints to the model
-# i: time step
-# j: dimension
-for i in range(4):
-    for j in range(4):
-        model += (y[i][j] - U1[i][j] - (pl.lpSum([A_k[i][j][a] * x[a] for a in range(4)])) - E[i][j] <= delta[i][j])
-        model += (y[i][j] - U1[i][j] - (pl.lpSum([A_k[i][j][a] * x[a] for a in range(4)])) - E[i][j] >= -delta[i][j])
-        model += (E[j][i] <= gama[i])
-        model += (E[j][i] >= -gama[i])
+obj = gama[0] + gama[1] + gama[2] + gama[3]
 
-# Add the objective function to the model
-model += pl.lpSum([gama[0], gama[1], gama[2], gama[3]])
+constraints = [
+    (y[k] - U1[k] - A_k[k] @ x - E[k] <= delta[k]) for k in range(4)
+]
+constraints += [
+    (y[k] - U1[k] - A_k[k] @ x - E[k] >= -delta[k]) for k in range(4)
+]
 
-# Solve the problem
-status = model.solve()
+constraints += [
+    (E[:, k] <= gama[k] * np.ones(4).T) for k in range(4)
+]
 
-print(f"status: {model.status}, {pl.LpStatus[model.status]}")
+constraints += [
+    (E[:, k] >= -gama[k] * np.ones(4).T) for k in range(4)
+]
 
-print(f"objective: {model.objective.value()}")
+problem = cp.Problem(cp.Minimize(obj), constraints)
 
-for var in model.variables():
-    print(f"{var.name}: {var.value()}")
+problem.solve()
+
+# Print result.
+print("The optimal value is", problem.value)
+print("A solution X is")
+print(x.value)
 
 print(states[t])
 
-# print("#######")
-# print(A @ states[-50])
-# print(A[1][0] * states[-50][0] + A[1][1] * states[-50][1] + A[1][2] * states[-50][2] + A[1][3] * states[-50][3])
-# print("#######")
-# print(delta)
