@@ -8,6 +8,8 @@ from scipy.integrate import solve_ivp
 from utils.formal.gaussian_distribution import GaussianDistribution
 from utils.control.linearizer import Linearizer
 
+# np.set_printoptions(precision=6)
+
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
@@ -226,10 +228,10 @@ class Simulator:
         self.inputs[self.cur_index] = deepcopy(self.cur_u)
 
         # implement control input
-        ts = (self.cur_index * self.dt, (self.cur_index + 1) * self.dt)
-        res = solve_ivp(self.ode, ts, self.cur_x, args=(self.cur_u,))
+        # ts = (self.cur_index * self.dt, (self.cur_index + 1) * self.dt)
+        # res = solve_ivp(self.ode, ts, self.cur_x, args=(self.cur_u,))
         self.cur_index += 1
-        self.cur_x = res.y[:, -1]
+        # self.cur_x = res.y[:, -1]
         self.post_x = self.cur_x
         if self.model_type == 'linear':
             self.cur_x = self.sysd.A @ self.cur_x + self.sysd.B @ self.cur_u
@@ -245,7 +247,12 @@ class Simulator:
 
         # prepare feedback
         if self.feedback_type:
-            self.cur_feedback = self.cur_x if self.feedback_type == 'state' else self.cur_y
+            # self.cur_feedback = self.cur_x if self.feedback_type == 'state' else self.cur_y
+            if self.feedback_type == 'state':
+                self.cur_feedback = deepcopy(self.cur_x)
+            else:
+                self.cur_feedback = self.cur_y
+            print(self.cur_feedback)
             # self.cur_feedback may be attacked before implement
         else:
             self.cur_feedback = None

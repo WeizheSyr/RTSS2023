@@ -15,6 +15,10 @@ if __name__ == "__main__":
         'process': {
             'type': 'white',
             'param': {'C': np.eye(7) * 0.01}
+        },
+        'measurement': {
+            'type': 'white',
+            'param': {'C': np.eye(7) * 0.01}
         }
     }
     # lk = LaneKeeping('test', dt, max_index, noise)
@@ -28,14 +32,15 @@ if __name__ == "__main__":
     print(lk.C)
 
     start_point = 500
-    delt_x = 0.05
+    delt_x = 1
 
     for i in range(0, max_index + 1):
         assert lk.cur_index == i
         lk.update_current_ref(ref[i])
 
         if i > start_point:
-            lk.cur_feedback[0] -= delt_x
+            # lk.cur_feedback[0] += delt_x
+            lk.cur_feedback[1] *= 2
             # print(lk.cur_feedback[0])
 
         lk.evolve()

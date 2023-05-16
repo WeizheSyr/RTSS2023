@@ -4,11 +4,10 @@ import cvxpy as cp
 from simulators.linear.platoon import Platoon
 import math
 
-np.set_printoptions(precision=6)
-np.set_printoptions(suppress = True)
+# np.set_printoptions(precision=6)
+np.set_printoptions(suppress=True)
 
-INF = 100000
-# INF = math.inf
+INF = 1
 
 max_index = 600
 dt = 0.02
@@ -42,7 +41,7 @@ if os.path.isfile(feedbacksFilename):
 
 # inputs = inputs.reshape(inputs.size, 1)
 
-t = -80
+t = -90
 
 # dimension of A
 m = 7
@@ -66,15 +65,18 @@ for i in range(m):
     y[i] = feedbacks[t+i]
 print(y[-1])
 
+# with or without noise
 delta = np.zeros([m, m])
 for i in range(m):
     if i == 0:
-        delta[0] = np.ones(m) * 0
+        delta[0] = np.zeros(m)
     else:
         if i == 1:
             delta[1] = np.ones(m) * 0.01
         else:
             delta[i] = abs(A) @ delta[i-1] + delta[1]
+for i in range(m):
+    delta[i] += np.ones(m) * 0.01
 print("delta")
 print(delta)
 
@@ -94,9 +96,9 @@ for i in range(m):
     if i == 0:
         U[0] = np.zeros([m])
     else:
-        U[i] = B @ u[i]
+        U[i] = B @ u[i-1] + A @ U[i-1]
 print("U")
-print(U[-1])
+print(U)
 
 x = cp.Variable([m], name="x")
 gama = cp.Variable([m], name="gama", boolean=True)
@@ -112,27 +114,27 @@ constraints += [
 ]
 
 constraints += [
-    (E[:, k] <= INF * gama[k] * np.ones(m).T) for k in range(m)
+    (E[:, k] <= INF * gama[k] * np.ones(m)) for k in range(m)
 ]
 
 constraints += [
-    (E[:, k] >= INF * -gama[k] * np.ones(m).T) for k in range(m)
+    (E[:, k] >= -1 * INF * gama[k] * np.ones(m)) for k in range(m)
 ]
 
 problem = cp.Problem(cp.Minimize(obj), constraints)
 
+# problem.solve(solver=cp.SCIPY)
 problem.solve()
 
 # Print result.
 print("The optimal value is", problem.value)
 print("A solution X is")
 print(x.value)
+print("A solution gama is")
 print(gama.value)
-# print(E.value)
-
+print("the real state is")
 print(states[t])
-print("********************")
-print(A @ states[t-1] + B @ inputs[t-1])
-# print("*******************#############*")
-# print(inputs[t])
-print("********************")
+print("y_0 is")
+print(y[0])
+print("E.value")
+print(E.value)
