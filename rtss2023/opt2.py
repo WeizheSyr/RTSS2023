@@ -3,6 +3,7 @@ import numpy as np
 import cvxpy as cp
 from simulators.linear.platoon import Platoon
 import math
+import time
 
 # np.set_printoptions(precision=6)
 np.set_printoptions(suppress=True)
@@ -123,8 +124,12 @@ constraints += [
 
 problem = cp.Problem(cp.Minimize(obj), constraints)
 
-# problem.solve(solver=cp.SCIPY)
+start = time.perf_counter()
 problem.solve()
+# problem.solve(solver=cp.SCIPY)
+end = time.perf_counter()
+elapsed = end - start
+print(elapsed * 1000, "ms")
 
 # Print result.
 print("The optimal value is", problem.value)
@@ -138,3 +143,51 @@ print("y_0 is")
 print(y[0])
 print("E.value")
 print(E.value)
+
+
+# solve the bound of the second dimension
+x1 = cp.Variable([m], name="x1")
+y1 = cp.Variable([m, m], name="y1")
+alpha = cp.Variable([m], name="alpha", boolean=True)
+beta = cp.Variable([m], name="beta", boolean=True)
+
+obj1 = cp.abs(x1[1] - x.value[1])
+
+x_ = np.zeros([m])
+for i in range(m):
+    x_[i] = x.value[i]
+E_ = np.zeros([m, m])
+for i in range(m):
+    for j in range(m):
+        E_[i][j] = E.value[i][j]
+
+print("A_k[i] @ x_", A_k[i] @ x_)
+# temp = np.zeros([m, m])
+# for i in range(m):
+#     temp[i] = A_k[i] @ x_ - A_k[i] @ x1
+
+temp1 = np.zeros([m, m])
+for i in range(m):
+    temp1[i] = A_k[i] @ x_
+
+sigma = y - temp1 - E_
+
+constraints1 = [
+    cp.sum(beta) <= m
+]
+constraints1 += [
+    ((((y - y1) - (A_k[k] @ x_ - A_k[i] @ x1) - sigma)[:, k] <= beta[k] * np.ones(m)) for i in range(m)) for k in range(m)
+]
+constraints1 += [
+    ((((y - y1) - (A_k[k] @ x_ - A_k[i] @ x1) - sigma)[:, k] >= -beta[k] * np.ones(m)) for i in range(m)) for k in range(m)
+]
+constraints1 += [
+    y - y1 - sigma <= 2 * delta
+]
+constraints1 += [
+    y - y1 - sigma >= -2 * delta
+]
+
+bound = cp.Problem(cp.Maximize(obj1), constraints1)
+bound.solve()
+print("The optimal value is", bound.value)
