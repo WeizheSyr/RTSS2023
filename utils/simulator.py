@@ -8,7 +8,7 @@ from scipy.integrate import solve_ivp
 from utils.formal.gaussian_distribution import GaussianDistribution
 from utils.control.linearizer import Linearizer
 
-# np.set_printoptions(precision=6)
+np.set_printoptions(precision=6)
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
