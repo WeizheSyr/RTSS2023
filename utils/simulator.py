@@ -8,7 +8,7 @@ from scipy.integrate import solve_ivp
 from utils.formal.gaussian_distribution import GaussianDistribution
 from utils.control.linearizer import Linearizer
 
-np.set_printoptions(precision=6)
+# np.set_printoptions(precision=6)
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -172,11 +172,11 @@ class Simulator:
                 self.m_noise_dist = GaussianDistribution.from_standard(miu, C)
                 self.m_noise = self.m_noise_dist.random(self.max_index + 2).T
             elif noise['measurement']['type'] == 'box_uniform':
-                lo = noise['process']['param']['lo']
-                up = noise['process']['param']['up']
+                lo = noise['measurement']['param']['lo']
+                up = noise['measurement']['param']['up']
                 assert up.shape == (self.p,) and lo.shape == (self.p,)
                 noise_base = np.random.random_sample((self.max_index + 2, self.p))
-                self.p_noise = lo + noise_base * (up - lo)
+                self.m_noise = lo + noise_base * (up - lo)
 
     def set_init_state(self, x):
         self.init_state = x

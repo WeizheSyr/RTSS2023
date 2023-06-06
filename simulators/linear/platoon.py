@@ -21,8 +21,8 @@ B = np.concatenate((np.zeros((4, 3)), np.eye(4)), axis=1).T
 x_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 # control parameters
-R = np.eye(4) * 0.00025
-Q = np.eye(7) * 1
+R = np.eye(4) * 0.00002
+Q = np.eye(7) * 0.3
 
 control_limit = {
     'lo': np.array([-5]),
@@ -69,7 +69,8 @@ class Platoon(Simulator):
         controller = Controller(dt, control_limit)
         settings = {
             'init_state': x_0,
-            'feedback_type': 'state',
+            # 'feedback_type': 'state',
+            'feedback_type': 'output',
             'controller': controller
         }
         if noise:
@@ -80,11 +81,17 @@ class Platoon(Simulator):
 if __name__ == "__main__":
     max_index = 800
     dt = 0.02
-    ref = [np.array([1])] * 301 + [np.array([1])] * 300 + [np.array([1])] * 200
+    ref = [np.array([1])] * 301 + [np.array([1])] * 500
     noise = {
         'process': {
-            'type': 'white',
-            'param': {'C': np.eye(7) * 0.01}
+            'type': 'box_uniform',
+            'param': {'lo': np.ones(7) * -0.002,
+                      'up': np.ones(7) * 0.002}
+        },
+        'measurement': {
+            'type': 'box_uniform',
+            'param': {'lo': np.ones(7) * -0.002,
+                      'up': np.ones(7) * 0.002}
         }
     }
     platoon = Platoon('test', dt, max_index, noise)

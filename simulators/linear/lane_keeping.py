@@ -105,6 +105,8 @@ if __name__ == "__main__":
     for i in range(0, max_index + 1):
         assert lk.cur_index == i
         lk.update_current_ref(ref[i])
+        print("###########")
+        print(lk.inputs[i])
 
         # attack here
         if i > start_point:
