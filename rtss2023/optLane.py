@@ -1,7 +1,7 @@
 import os.path
 import numpy as np
 import cvxpy as cp
-from simulators.linear.quadrotor import Quadrotor
+from simulators.linear.lane_keeping import LaneKeeping
 import math
 import time
 
@@ -12,28 +12,25 @@ INF = 0.5
 
 max_index = 600
 dt = 0.02
-ref = [np.array([1])] * 301 + [np.array([1])] * 400
+ref = [np.array([1])] * 301 + [np.array([1])] * 300
 noise = {
     'process': {
-        'type': 'box_uniform',
-        'param': {'lo': np.ones(12) * -0.001,
-                  'up': np.ones(12) * 0.001}
+        'type': 'white',
+        'param': {'C': np.eye(7) * 0.002}
     },
     'measurement': {
-        'type': 'box_uniform',
-        'param': {'lo': np.ones(6) * -0.001,
-                  'up': np.ones(6) * 0.001}
+        'type': 'white',
+        'param': {'C': np.eye(7) * 0.002}
     }
 }
-quadrotor = Quadrotor('test', dt, max_index, noise)
+laneKeeping = LaneKeeping('test', dt, max_index, noise)
 
-A = quadrotor.sysd.A
-B = quadrotor.sysd.B
-C = quadrotor.C
+A = laneKeeping.sysd.A
+B = laneKeeping.sysd.B
 
-inputsFilename = 'save/inputs_Quadrotor test.csv'
-statesFilename = 'save/states_Quadrotor test.csv'
-feedbacksFilename = 'save/feedbacks_Quadrotor test.csv'
+inputsFilename = 'save/inputs_LaneKeeping.csv'
+statesFilename = 'save/states_LaneKeeping.csv'
+feedbacksFilename = 'save/feedbacks_LaneKeeping.csv'
 
 if os.path.isfile(inputsFilename):
     with open(inputsFilename) as file:
@@ -49,18 +46,14 @@ if os.path.isfile(feedbacksFilename):
 
 # inputs = inputs.reshape(inputs.size, 1)
 
-# print(inputs[100])
-
 t = -70
 
-# dimension of y
-l = 6
 # dimension of A
-m = 12
+m = 4
 # dimension of u
-n = 1
+n = 4
 # dimension of timestep
-timestep = 12
+timestep = 10
 
 # u_0, u_1, u_2, u_3
 # print("u_0, u_1 ... u_6")
@@ -74,7 +67,7 @@ print("x_0")
 print(states[t])
 
 # print("y_0, y_1, ... y_6")
-y = np.zeros([timestep, l])
+y = np.zeros([timestep, m])
 for i in range(timestep):
     y[i] = feedbacks[t + i]
 # print(y[-1])
@@ -86,11 +79,11 @@ for i in range(timestep):
         delta[0] = np.zeros(m)
     else:
         if i == 1:
-            delta[1] = np.ones(m) * 0.01
+            delta[1] = np.ones(m) * 0.002
         else:
             delta[i] = abs(A) @ delta[i - 1] + delta[1]
 for i in range(m):
-    delta[i] += np.ones(m) * 0.01
+    delta[i] += np.ones(m) * 0.002
 # print("delta")
 # print(delta)
 
@@ -116,23 +109,23 @@ for i in range(timestep):
 
 x = cp.Variable([m], name="x")
 gama = cp.Variable([m], name="gama", boolean=True)
-E = cp.Variable([timestep, l], name="E")
+E = cp.Variable([timestep, m], name="E")
 
 obj = cp.sum(gama)
 
 constraints = [
     (gama[k] <= 0) for k in range(m)
 ]
-att = 2
+att = 0
 del constraints[att]
 constraints += [
     gama[att] <= 1
 ]
 constraints += [
-    (y[k] - U[k] - (C @ A_k[k] @ x) - E[k] <= delta[k]) for k in range(timestep)
+    (y[k] - U[k] - (A_k[k] @ x) - E[k] <= delta[k]) for k in range(timestep)
 ]
 constraints += [
-    (y[k] - U[k] - (C @ A_k[k] @ x) - E[k] >= -delta[k]) for k in range(timestep)
+    (y[k] - U[k] - (A_k[k] @ x) - E[k] >= -delta[k]) for k in range(timestep)
 ]
 
 constraints += [
@@ -165,9 +158,8 @@ print(y[0])
 # print("E.value")
 # print(E.value)
 
-
-
-
+#
+#
 # stealth attack bound2
 x1 = cp.Variable([m], name="x1")
 E1 = cp.Variable([timestep, m], name="E1")
@@ -175,7 +167,6 @@ beta = cp.Variable([m], name="beta", boolean=True)
 
 dim = 0
 obj1 = x1[dim] - x.value[dim]
-# obj1 = x1[dim] - x.value
 
 x_ = np.zeros([m])
 for i in range(m):
@@ -227,10 +218,10 @@ bound1.solve()
 bound2.solve()
 print("The optimal value is", bound1.value, bound2.value)
 
-# path = 'save/each_dim.txt'
-# with open(path, 'a') as target:
-#     # target.writelines(["\nattack_dim: ", str(att), "\n"])
-#     # target.writelines([str(x.value), "\n"])
-#     # target.writelines([str(states[t]), "\n"])
-#     target.writelines(["dim: ", str(dim), "\n"])
-#     target.writelines([str(bound1.value), " ", str(bound2.value), "\n"])
+path = 'save/each_dim.txt'
+with open(path, 'a') as target:
+    # target.writelines(["\nattack_dim: ", str(att), "\n"])
+    # target.writelines([str(x.value), "\n"])
+    # target.writelines([str(states[t]), "\n"])
+    target.writelines(["dim: ", str(dim), "\n"])
+    target.writelines([str(bound1.value), " ", str(bound2.value), "\n"])
