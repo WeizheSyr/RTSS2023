@@ -10,17 +10,19 @@ np.set_printoptions(suppress=True)
 
 INF = 0.5
 
-max_index = 600
-dt = 0.02
-ref = [np.array([1])] * 301 + [np.array([1])] * 300
+max_index = 700
+dt = 0.01
+ref = [np.array([0])] * 301 + [np.array([0])] * 400
 noise = {
     'process': {
-        'type': 'white',
-        'param': {'C': np.eye(7) * 0.002}
+        'type': 'box_uniform',
+        'param': {'lo': np.ones(4) * -0.002,
+                  'up': np.ones(4) * 0.002}
     },
     'measurement': {
-        'type': 'white',
-        'param': {'C': np.eye(7) * 0.002}
+        'type': 'box_uniform',
+        'param': {'lo': np.ones(4) * -0.002,
+                  'up': np.ones(4) * 0.002}
     }
 }
 laneKeeping = LaneKeeping('test', dt, max_index, noise)
@@ -28,9 +30,9 @@ laneKeeping = LaneKeeping('test', dt, max_index, noise)
 A = laneKeeping.sysd.A
 B = laneKeeping.sysd.B
 
-inputsFilename = 'save/inputs_LaneKeeping.csv'
-statesFilename = 'save/states_LaneKeeping.csv'
-feedbacksFilename = 'save/feedbacks_LaneKeeping.csv'
+inputsFilename = 'save/inputs_Lane Keeping test.csv'
+statesFilename = 'save/states_Lane Keeping test.csv'
+feedbacksFilename = 'save/feedbacks_Lane Keeping test.csv'
 
 if os.path.isfile(inputsFilename):
     with open(inputsFilename) as file:
@@ -46,12 +48,12 @@ if os.path.isfile(feedbacksFilename):
 
 # inputs = inputs.reshape(inputs.size, 1)
 
-t = -70
+t = -150
 
 # dimension of A
 m = 4
 # dimension of u
-n = 4
+n = 1
 # dimension of timestep
 timestep = 10
 

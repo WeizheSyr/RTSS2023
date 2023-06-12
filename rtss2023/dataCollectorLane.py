@@ -1,30 +1,29 @@
 from system1 import System1
 import matplotlib.pyplot as plt
 from simulators.linear.lane_keeping import LaneKeeping
-from simulators.linear.platoon import Platoon
+# from simulators.linear.platoon import Platoon
 import numpy as np
 import system as sys
 from utils import Simulator
 
 if __name__ == "__main__":
     max_index = 700
-    dt = 0.02
+    dt = 0.01
     # ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
-    ref = [np.array([1])] * 301 + [np.array([1])] * 400
+    ref = [np.array([0])] * 301 + [np.array([0])] * 400
     noise = {
         'process': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.002,
-                      'up': np.ones(7) * 0.002}
+            'param': {'lo': np.ones(4) * -0.002,
+                      'up': np.ones(4) * 0.002}
         },
         'measurement': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.002,
-                      'up': np.ones(7) * 0.002}
+            'param': {'lo': np.ones(4) * -0.002,
+                      'up': np.ones(4) * 0.002}
         }
     }
-    # lk = LaneKeeping('test', dt, max_index, noise)
-    lk = Platoon('test', dt, max_index, noise)
+    lk = LaneKeeping('test', dt, max_index, noise)
 
     print('A')
     print(lk.sysd.A)
@@ -34,7 +33,7 @@ if __name__ == "__main__":
     print(lk.C)
 
     start_point = 600
-    delt_x = 0.02
+    delt_x = 1
 
     for i in range(0, max_index + 1):
         assert lk.cur_index == i
