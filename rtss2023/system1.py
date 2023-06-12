@@ -1,4 +1,5 @@
 import numpy as np
+from Authenticate import Authenticate
 
 class System1:
     def __init__(self, detector, exp, attack=None, attack_duration=50):
@@ -20,7 +21,11 @@ class System1:
         self.y_tilda1 = []
         self.y1 = []
 
-        self.queue = []
+        self.queue = []         # detector queue
+
+        # authentication
+        self.auth = Authenticate(exp, 4)    # 4 for platoon
+        self.authQueue = []     # authentication queue
 
 
         while True:

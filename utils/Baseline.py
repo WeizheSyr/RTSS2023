@@ -1,4 +1,5 @@
 from simulators.linear.rlc_circuit_lqr import RlcCircuit
+from simulators.linear.platoon import Platoon
 import numpy as np
 from utils.attack import Attack
 
@@ -22,3 +23,24 @@ class rlc_circuit_bias:
     attack_start_index = 200
     # bias = np.array([0, 0, 0, 0])
     # attack = Attack('bias', bias, attack_start_index)
+
+class Platoon:
+    name = 'platoon'
+    max_index = 700
+    dt = 0.02
+    # ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
+    ref = [np.array([1])] * 301 + [np.array([1])] * 400
+    noise = {
+        'process': {
+            'type': 'box_uniform',
+            'param': {'lo': np.ones(7) * -0.002,
+                      'up': np.ones(7) * 0.002}
+        },
+        'measurement': {
+            'type': 'box_uniform',
+            'param': {'lo': np.ones(7) * -0.002,
+                      'up': np.ones(7) * 0.002}
+        }
+    }
+    model = Platoon('test', dt, max_index, noise)
+    attack_start_index = 600
