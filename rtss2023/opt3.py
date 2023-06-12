@@ -342,7 +342,7 @@ x1 = cp.Variable([m], name="x1")
 E1 = cp.Variable([timestep, m], name="E1")
 beta = cp.Variable([m], name="beta", boolean=True)
 
-dim = 1
+dim = 0
 obj1 = x1[dim] - x.value[dim]
 
 x_ = np.zeros([m])
