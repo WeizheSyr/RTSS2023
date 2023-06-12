@@ -1,17 +1,17 @@
 from system import System
 from system1 import System1
-from utils.Baseline import rlc_circuit_bias
+from utils.Baseline import Platoon
 from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-detector = window(10, 0.1)
-exp = rlc_circuit_bias
-# attack = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
-# attack = [0.1]*50
-# attack = [np.array([0])] * 50
-attack = [np.array([0.01])] * 20
-attack_duration = len(attack)
+detector = window(14, 0.5)
+exp = Platoon
+# attack = [np.array([0.01])] * 20
+attack_duration = 20
+attack = np.zeros(attack_duration)
+for i in range(attack_duration):
+    attack[i] = 0.005 * i
 
 sys = System1(detector=detector, exp=exp, attack=attack, attack_duration=attack_duration)
 

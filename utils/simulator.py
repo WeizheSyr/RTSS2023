@@ -234,8 +234,8 @@ class Simulator:
         # self.cur_x = res.y[:, -1]
         self.post_x = self.cur_x
         if self.model_type == 'linear':
-            print('B, U', self.sysd.B.shape, self.cur_u.shape)
-            print(self.cur_u)
+            # print('B, U', self.sysd.B.shape, self.cur_u.shape)
+            # print(self.cur_u)
             self.cur_x = self.sysd.A @ self.cur_x + self.sysd.B @ self.cur_u
         if self.p_noise is not None:  # process noise
             self.cur_x += self.p_noise[self.cur_index]

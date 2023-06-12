@@ -24,8 +24,9 @@ class System1:
         self.queue = []         # detector queue
 
         # authentication
-        self.auth = Authenticate(exp, 4)    # 4 for platoon
-        self.authQueue = []     # authentication queue
+        self.auth = Authenticate(exp.model, 4)    # 4 for platoon
+        self.authQueueInput = []            # authentication input queue
+        self.authQueueFeed = []             # authentication feedback queue
 
 
         while True:
@@ -41,6 +42,27 @@ class System1:
             self.y_hat.append(exp.model.predict)
 
             if exp.model.cur_index < exp.attack_start_index:
+                # authentication
+                if exp.model.cur_index >= 11:
+                    if len(self.authQueueInput) == self.auth.timestep:
+                        self.authQueueInput.pop()
+                        self.authQueueFeed.pop()
+                    self.authQueueInput.insert(0, exp.model.inputs[exp.model.cur_index])
+                    # print('exp.model.inputs[-1]', exp.model.inputs[exp.model.cur_index])
+                    # self.authQueueFeed.insert(0, exp.model.feedbacks[-1])
+                    self.authQueueFeed.insert(0, exp.model.cur_y)
+                    print('exp.model.feedbacks[exp.model.cur_index]', exp.model.cur_y)
+
+                    if len(self.authQueueInput) == self.auth.timestep:
+                        self.auth.getInputs(self.authQueueInput)
+                        self.auth.getFeedbacks(self.authQueueFeed)
+                        self.auth.getAuth()
+                        print('auth.x', self.auth.x)
+                        print('states', exp.model.cur_y)
+                        # self.auth.getAllBound()
+                        # print('auth.bound[0]', self.auth.bound[0])
+
+                # window-based detector
                 residual = (self.y_hat[self.i - 1] - self.y_tilda[self.i - 1])[0]
                 if len(self.queue) == detector.w:
                     self.queue.pop()
@@ -48,6 +70,8 @@ class System1:
                 print(sum(self.queue))
                 if sum(self.queue) > detector.tao:
                     alarm = True
+                    print("alarm at", exp.model.cur_index)
+                    exit(1)
                 else:
                     alarm = False
 
@@ -62,15 +86,30 @@ class System1:
                 self.y_tilda1.append(self.y_tilda[-1])
                 self.y1.append(self.y[-1])
 
-                residual = (self.y_hat[self.i - 1] - self.y_tilda[self.i - 1])[0]
+                # authentication
+                if len(self.authQueueInput) == self.auth.timestep:
+                    self.authQueueInput.pop()
+                    self.authQueueFeed.pop()
+                self.authQueueInput.insert(0, exp.model.inputs[-1])
+                self.authQueueFeed.insert(0, exp.model.feedbacks[-1])
+                if len(self.authQueueInput) == self.auth.timestep:
+                    self.auth.getInputs(self.authQueueInput)
+                    self.auth.getFeedbacks(self.authQueueFeed)
+                    self.auth.getAuth()
+                    print('auth.x', self.auth.x)
+                    self.auth.getAllBound()
+                    print('auth.bound[0]', self.auth.bound[0])
 
                 # window-based detector
+                residual = (self.y_hat[self.i - 1] - self.y_tilda[self.i - 1])[0]
                 if len(self.queue) == detector.w:
                     self.queue.pop()
                 self.queue.insert(0, abs(residual))
                 print(sum(self.queue))
                 if sum(self.queue) > detector.tao:
                     alarm = True
+                    print("alarm at", exp.model.cur_index)
+                    exit(1)
                 else:
                     alarm = False
                 print(alarm)

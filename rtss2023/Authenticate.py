@@ -65,6 +65,8 @@ class Authenticate:
 
     def getAuth(self, att=0):
         self.U = self.getU()
+        print('u', self.u)
+        print('y', self.y)
 
         x = cp.Variable([self.m], name="x")
         gama = cp.Variable([self.m], name="gama", boolean=True)
@@ -95,6 +97,7 @@ class Authenticate:
         problem = cp.Problem(cp.Minimize(obj), constraints)
         problem.solve(solver=cp.SCIPY)
 
+        print('x.value', x.value)
         for i in range(self.m):
             self.x[i] = x.value[i]
         for i in range(self.m):
