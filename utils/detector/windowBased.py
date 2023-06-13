@@ -1,41 +1,16 @@
 import numpy as np
 
-# window based detector
-
-# class window:
-#     def __init__(self, w=10, tao=0.1):
-#         self.w = w
-#         self.tao = tao
-#         self.r = 0
-#         self.queue = []
-#         self.step = 0
-#
-#     def test(self):
-#         print('hello')
-#
-#     def detect(self, residual):  # s is residual
-#         if len(self.queue) == self.w:
-#             self.queue.pop()
-#         self.queue.insert(0, abs(residual))
-#
-#         self.r = sum(self.queue)
-#         print("detector")
-#         print(self.r)
-#         if self.r > self.tao:
-#             return True
-#         else:
-#             return False
 
 class window:
     def __init__(self, tao, m=7, w=14):
         self.m = m              # dimension of states
         self.w = w              # observation window
         self.tao = tao          # threshold tao
-        # self.queue = [[] * m]    # residual queue
         self.queue = [[] for i in range(m)]
-        # self.queue = [[0] * m for i in range(w)]    # residual queue
-        self.results = [0] * m  # detection results in this timestep
-        self.rsum = [0] * m     # sum of residual for each dimension
+        self.results = np.zeros(m)
+        # self.results = [0] * m  # detection results in this timestep
+        self.rsum = np.zeros(m)
+        # self.rsum = [0] * m     # sum of residual for each dimension
 
     # residual: residual data for this dimension
     # dim: which dimension this function detect

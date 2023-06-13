@@ -12,8 +12,12 @@ class SystemALLDim:
         self.y_tilda = []
         self.y_hat = []
         self.alarm_list = []
-        self.theta1 = [-0.0001]
-        self.theta2 = [0.0001]
+
+        self.theta1 = [[] for i in range(detector.m)]
+        self.theta2 = [[] for i in range(detector.m)]
+        self.theta1 = np.array(self.theta1)
+        self.theta2 = np.array(self.theta2)
+
         self.est1 = []
         self.est2 = []
         self.A = exp.model.sysd.A
@@ -111,38 +115,29 @@ class SystemALLDim:
                     exit(1)
 
                 # real state calculate
-                pOrN = residual < 0 and -1 or 1
-                rsum = 0
+                pOrN = [0] * detector.m
+                for i in range(detector.m):
+                    pOrN[i] = residual[i] < 0 and -1 or 1
+                # rsum = 0
                 l = len(self.y)
-                for t in range(detector.w):
-                    rsum = rsum + abs(self.y_hat[l - 1 - t][0] - self.y_tilda[l - 1 - t][0])
-                print(rsum)
+                # for t in range(detector.w):
+                #     rsum = rsum + abs(self.y_hat[l - 1 - t][0] - self.y_tilda[l - 1 - t][0])
+                # print(rsum)
+                rsum = self.detector.rsum
                 # tao - sum_{i=t-w}^{t-1} |\hat{x}_i - \widetilde{x}_i|
-                temp = detector.tao - rsum + abs(self.y_hat[l - 2][0] - self.y_tilda[l - 2][0])
+                temp = detector.tao - rsum + abs(self.y_hat[l - 2] - self.y_tilda[l - 2])
+                temp = self.A @ temp
 
-                # equation 10
-                if pOrN > 0:
-                    # add 0 to other dimension
-                    theta10 = [0] * self.auth.m
-                    theta10[0] = self.theta1[-1]
-                    self.theta1.append((self.A @ theta10)[0] - 0.002)
+                if len(self.theta1) == 0:
 
-                    theta20 = [0] * self.auth.m
-                    theta20[0] = self.theta2[-1]
-                    temp0 = [0] * self.auth.m
-                    temp0[0] = temp
-                    self.theta2.append((self.A @ temp0 + self.A @ theta20)[0] + 0.002)
-                else:
-                    # add 0 to other dimension
-                    theta10 = [0] * self.auth.m
-                    theta10[0] = self.theta1[-1]
-                    temp0 = [0] * self.auth.m
-                    temp0[0] = temp
-                    self.theta1.append((-self.A @ temp0 + self.A @ theta10)[0] - 0.002)
-
-                    theta20 = [0] * self.auth.m
-                    theta20[0] = self.theta2[-1]
-                    self.theta2.append((self.A @ theta20)[0] + 0.002)
+                for i in range(len(pOrN)):
+                    if pOrN[i] > 0:
+                        # np.append(self.theta1[i], (self.A @ self.theta1[:, -1])[i])
+                        self.theta1[i].append((self.A @ self.theta1[:, -1])[i])
+                        self.theta2[i].append((temp + [0.002] * detector.m + self.A @ self.theta2[:, -1])[i])
+                    else:
+                        self.theta1[i].append((-temp - [0.002] * detector.m + self.A @ self.theta1[:, -1])[i])
+                        self.theta2[i].append((self.A @ self.theta2[:, -1])[i])
 
                 print('bound')
                 print('attack steps ', attack_step)

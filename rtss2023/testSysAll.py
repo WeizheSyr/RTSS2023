@@ -6,7 +6,8 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-tao = [0.5] * 7
+tao = np.ones(7) * 0.5
+# tao = [0.5] * 7
 detector = window(tao, 7, 14)
 exp = Platoon
 # attack = [np.array([0.01])] * 20
