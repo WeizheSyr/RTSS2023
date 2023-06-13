@@ -21,14 +21,15 @@ class SystemALLDim:
         self.y_tilda1 = []
         self.y1 = []
 
-        self.queue = []         # detector queue
+        # window-based detector
+        self.detectResults = []
+        self.detector = detector
 
         # authentication
         self.auth = Authenticate(exp.model, 4)    # 4 for platoon
         self.authQueueInput = []            # authentication input queue
         self.authQueueFeed = []             # authentication feedback queue
         self.authTimestep = 0               # timestep 14 for platoon
-
 
         while True:
             exp.model.update_current_ref(exp.ref[self.i])
@@ -45,10 +46,6 @@ class SystemALLDim:
             if exp.model.cur_index < exp.attack_start_index:
                 # authentication
                 if exp.model.cur_index >= 600:
-                    np.savetxt(f'save/inputs.csv', exp.model.inputs[400:], delimiter=',')
-                    np.savetxt(f'save/states.csv', exp.model.states[400:], delimiter=',')
-                    np.savetxt(f'save/feedbacks.csv', exp.model.feedbacks[400:], delimiter=',')
-
                     if len(self.authQueueInput) == self.auth.timestep:
                         self.authQueueInput.pop()
                         self.authQueueFeed.pop()
@@ -59,11 +56,8 @@ class SystemALLDim:
 
                     self.authTimestep += 1
                     if self.authTimestep == self.auth.timestep:
-                        # authQueueInput1 = self.authQueueInput[1:]
-                        authQueueInput1 =self.authQueueInput[::-1]
-                        # authQueueFeed1 = self.authQueueFeed[1:]
+                        authQueueInput1 = self.authQueueInput[::-1]
                         authQueueFeed1 = self.authQueueFeed[::-1]
-                        # print(len(authQueueFeed1))
                         self.auth.getInputs(authQueueInput1)
                         self.auth.getFeedbacks(authQueueFeed1)
                         self.auth.getAuth()
@@ -74,16 +68,11 @@ class SystemALLDim:
 
                 # window-based detector
                 residual = self.y_hat[self.i - 1] - self.y_tilda[self.i - 1]
-                if len(self.queue) == detector.w:
-                    self.queue.pop()
-                self.queue.insert(0, abs(residual))
-                print(sum(self.queue))
-                if sum(self.queue) > detector.tao:
-                    alarm = True
+                self.detectResults.append(self.detector.detect(residual))
+                alarm = self.detector.alarmOrN()
+                if alarm:
                     print("alarm at", exp.model.cur_index)
                     exit(1)
-                else:
-                    alarm = False
 
             # under attack
             if exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration - 1:
@@ -114,22 +103,12 @@ class SystemALLDim:
                     print('auth.bound[0]', self.auth.bound[0])
 
                 # window-based detector
-                residual = (self.y_hat[self.i - 1] - self.y_tilda[self.i - 1])[0]
-                if len(self.queue) == detector.w:
-                    self.queue.pop()
-                self.queue.insert(0, abs(residual))
-                print(sum(self.queue))
-                if sum(self.queue) > detector.tao:
-                    alarm = True
+                residual = self.y_hat[self.i - 1] - self.y_tilda[self.i - 1]
+                self.detectResults.append(self.detector.detect(residual))
+                alarm = self.detector.alarmOrN()
+                if alarm:
                     print("alarm at", exp.model.cur_index)
                     exit(1)
-                else:
-                    alarm = False
-                print(alarm)
-                self.alarm_list.append(alarm)
-                if alarm:
-                    # self.reachability()
-                    break
 
                 # real state calculate
                 pOrN = residual < 0 and -1 or 1
@@ -172,7 +151,6 @@ class SystemALLDim:
 
                 self.est1.append(self.y_hat[-1][0] + self.theta1[-1])
                 self.est2.append(self.y_hat[-1][0] + self.theta2[-1])
-
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:

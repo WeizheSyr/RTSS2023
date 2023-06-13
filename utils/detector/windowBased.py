@@ -27,11 +27,12 @@ import numpy as np
 #             return False
 
 class window:
-    def __init__(self, m=7, w=14):
+    def __init__(self, tao, m=7, w=14):
         self.m = m              # dimension of states
         self.w = w              # observation window
-        self.tao = [0] * m      # threshold tao
-        self.queue = [] * m     # residual queue
+        self.tao = tao          # threshold tao
+        # self.queue = [[] * m]    # residual queue
+        self.queue = [[] for i in range(m)]
         # self.queue = [[0] * m for i in range(w)]    # residual queue
         self.results = [0] * m  # detection results in this timestep
         self.rsum = [0] * m     # sum of residual for each dimension
@@ -39,7 +40,7 @@ class window:
     # residual: residual data for this dimension
     # dim: which dimension this function detect
     def detectOneDim(self, residual, dim):
-        if len(self.queue) == self.w:
+        if len(self.queue[dim]) == self.w:
             self.queue[dim].pop()
         self.queue[dim].insert(0, abs(residual))
 
@@ -54,3 +55,9 @@ class window:
         for i in range(self.m):
             self.results[i] = self.detectOneDim(residuals[i], i)
         return self.results
+
+    def alarmOrN(self):
+        if sum(self.results) >= 1:
+            return True
+        else:
+            return False

@@ -1,11 +1,13 @@
 from system import System
 from system1 import System1
+from systemALLDim import SystemALLDim
 from utils.Baseline import Platoon
 from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-detector = window
+tao = [0.5] * 7
+detector = window(tao, 7, 14)
 exp = Platoon
 # attack = [np.array([0.01])] * 20
 attack_duration = 20
@@ -13,7 +15,7 @@ attack = np.zeros(attack_duration)
 for i in range(attack_duration):
     attack[i] = 0.005 * i
 
-sys = System1(detector=detector, exp=exp, attack=attack, attack_duration=attack_duration)
+sys = SystemALLDim(detector=detector, exp=exp, attack=attack, attack_duration=attack_duration)
 
 max_index = len(sys.est1)
 print(max_index)
