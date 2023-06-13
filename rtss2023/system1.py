@@ -43,24 +43,32 @@ class System1:
 
             if exp.model.cur_index < exp.attack_start_index:
                 # authentication
-                if exp.model.cur_index >= 11:
+                if exp.model.cur_index >= 600:
+                    np.savetxt(f'save/inputs.csv', exp.model.inputs[400:], delimiter=',')
+                    np.savetxt(f'save/states.csv', exp.model.states[400:], delimiter=',')
+                    np.savetxt(f'save/feedbacks.csv', exp.model.feedbacks[400:], delimiter=',')
+
                     if len(self.authQueueInput) == self.auth.timestep:
                         self.authQueueInput.pop()
                         self.authQueueFeed.pop()
-                    self.authQueueInput.insert(0, exp.model.inputs[exp.model.cur_index])
-                    # print('exp.model.inputs[-1]', exp.model.inputs[exp.model.cur_index])
-                    # self.authQueueFeed.insert(0, exp.model.feedbacks[-1])
-                    self.authQueueFeed.insert(0, exp.model.cur_y)
-                    print('exp.model.feedbacks[exp.model.cur_index]', exp.model.cur_y)
+                    self.authQueueInput.insert(0, exp.model.inputs[exp.model.cur_index - 1])
+                    # print('exp.model.inputs[-1]', exp.model.inputs[exp.model.cur_index - 1])
+                    self.authQueueFeed.insert(0, exp.model.feedbacks[exp.model.cur_index - 1])
+                    # print('exp.model.cur_y', exp.model.feedbacks[exp.model.cur_index - 1])
 
                     if len(self.authQueueInput) == self.auth.timestep:
-                        self.auth.getInputs(self.authQueueInput)
-                        self.auth.getFeedbacks(self.authQueueFeed)
+                        # authQueueInput1 = self.authQueueInput[1:]
+                        authQueueInput1 =self.authQueueInput[::-1]
+                        # authQueueFeed1 = self.authQueueFeed[1:]
+                        authQueueFeed1 = self.authQueueFeed[::-1]
+                        # print(len(authQueueFeed1))
+                        self.auth.getInputs(authQueueInput1)
+                        self.auth.getFeedbacks(authQueueFeed1)
                         self.auth.getAuth()
                         print('auth.x', self.auth.x)
-                        print('states', exp.model.cur_y)
-                        # self.auth.getAllBound()
-                        # print('auth.bound[0]', self.auth.bound[0])
+                        print('states', exp.model.feedbacks[exp.model.cur_index - self.auth.timestep])
+                        self.auth.getAllBound()
+                        print('auth.bound[0]', self.auth.bound[0])
 
                 # window-based detector
                 residual = (self.y_hat[self.i - 1] - self.y_tilda[self.i - 1])[0]
@@ -79,7 +87,7 @@ class System1:
             if exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration - 1:
                 # attack here
                 attack_step = exp.model.cur_index - exp.attack_start_index
-                print(attack[attack_step])
+                # print(attack[attack_step])
                 exp.model.cur_y = exp.model.cur_y[0] + attack[attack_step]
                 # print(exp.model.cur_y)
                 self.y_tilda[-1] = exp.model.cur_y
@@ -126,11 +134,11 @@ class System1:
                 print(rsum)
                 temp = detector.tao - rsum + abs(self.y_hat[l - 2][0] - self.y_tilda[l - 2][0])
                 if pOrN > 0:
-                    self.theta1.append((self.A @ [self.theta1[-1], 0])[0] - 0.0001)
-                    self.theta2.append((self.A @ [temp, 0] + self.A @ [self.theta2[-1], 0])[0] + 0.0001)
+                    self.theta1.append((self.A @ [self.theta1[-1], 0])[0] - 0.002)
+                    self.theta2.append((self.A @ [temp, 0] + self.A @ [self.theta2[-1], 0])[0] + 0.002)
                 else:
-                    self.theta1.append((-self.A @ [temp, 0] + self.A @ [self.theta1[-1], 0])[0] - 0.0001)
-                    self.theta2.append((self.A @ [self.theta2[-1], 0])[0] + 0.0001)
+                    self.theta1.append((-self.A @ [temp, 0] + self.A @ [self.theta1[-1], 0])[0] - 0.002)
+                    self.theta2.append((self.A @ [self.theta2[-1], 0])[0] + 0.002)
                 self.est1.append(self.y_hat[-1][0] + self.theta1[-1])
                 self.est2.append(self.y_hat[-1][0] + self.theta2[-1])
 

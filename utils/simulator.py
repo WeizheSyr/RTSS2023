@@ -254,7 +254,7 @@ class Simulator:
                 self.cur_feedback = deepcopy(self.cur_x)
             else:
                 self.cur_feedback = self.cur_y
-            print(self.cur_feedback)
+            # print(self.cur_feedback)
             # self.cur_feedback may be attacked before implement
         else:
             self.cur_feedback = None
