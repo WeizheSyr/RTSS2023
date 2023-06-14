@@ -98,65 +98,37 @@ class SystemALLDim:
                 if len(self.authT) == 1:
                     self.theta[0] = t
                 else:
-                    np.append(self.theta, t)
+                    t = t.reshape(1, 7, 2)
+                    self.theta = np.append(self.theta, t, axis=0)
 
                 # update real state calculate
-                for k in range(7):
+                for k in range(6):
                     # bound from system dynamic
                     theta2 = self.boundByDynamic(self.i - (6 - k), exp.model.inputs[exp.model.cur_index - (6 - k)])
                     # bound from detector
                     theta1 = self.boundByDetector(self.i - (6 - k))
                     # combine bound
-                    np.append(self.theta, self.combineBound(theta1, theta2))
+                    t = self.combineBound(theta1, theta2)
+                    t = t.reshape(1, 7, 2)
+                    self.theta = np.append(self.theta, t, axis=0)
                     print('theta ', self.theta)
+                continue
 
             # real state calculate
             if len(self.authT) == 0:
                 continue
             if self.authT[-1] == self.i:
                 continue
-
             # bound from system dynamic
             theta2 = self.boundByDynamic(self.i - 1, exp.model.inputs[exp.model.cur_index - 1])
             # bound from detector
             theta1 = self.boundByDetector(self.i - 1)
             # combine bound
-            np.append(self.theta, self.combineBound(theta1, theta2))
+            t = self.combineBound(theta1, theta2)
+            t = t.reshape(1, 7, 2)
+            self.theta = np.append(self.theta, t, axis=0)
+            # self.theta = np.append(self.theta, self.combineBound(theta1, theta2))
             print('theta ', self.theta)
-
-
-                # # real state calculate
-                # pOrN = [0] * detector.m
-                # for i in range(detector.m):
-                #     pOrN[i] = residual[i] < 0 and -1 or 1
-                # # rsum = 0
-                # l = len(self.y)
-                # # for t in range(detector.w):
-                # #     rsum = rsum + abs(self.y_hat[l - 1 - t][0] - self.y_tilda[l - 1 - t][0])
-                # # print(rsum)
-                # rsum = self.detector.rsum
-                # # tao - sum_{i=t-w}^{t-1} |\hat{x}_i - \widetilde{x}_i|
-                # temp = detector.tao - rsum + abs(self.y_hat[l - 2] - self.y_tilda[l - 2])
-                # temp = self.A @ temp
-                #
-                # if len(self.theta1) == 0:
-                #
-                # for i in range(len(pOrN)):
-                #     if pOrN[i] > 0:
-                #         # np.append(self.theta1[i], (self.A @ self.theta1[:, -1])[i])
-                #         self.theta1[i].append((self.A @ self.theta1[:, -1])[i])
-                #         self.theta2[i].append((temp + [0.002] * detector.m + self.A @ self.theta2[:, -1])[i])
-                #     else:
-                #         self.theta1[i].append((-temp - [0.002] * detector.m + self.A @ self.theta1[:, -1])[i])
-                #         self.theta2[i].append((self.A @ self.theta2[:, -1])[i])
-                #
-                # print('bound')
-                # print('attack steps ', attack_step)
-                # print(self.theta1)
-                # print(self.theta2)
-                #
-                # self.est1.append(self.y_hat[-1][0] + self.theta1[-1])
-                # self.est2.append(self.y_hat[-1][0] + self.theta2[-1])
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
