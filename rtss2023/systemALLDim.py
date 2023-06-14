@@ -99,7 +99,10 @@ class SystemALLDim:
                     self.theta[0] = t
                 else:
                     t = t.reshape(1, 7, 2)
-                    self.theta = np.append(self.theta, t, axis=0)
+                    if len(self.theta) <= 7:
+                        self.theta = np.append(self.theta, t, axis=0)
+                    else:
+                        self.theta[self.i - 1 - 7] = t
 
                 # update real state calculate
                 for k in range(6):
@@ -110,8 +113,17 @@ class SystemALLDim:
                     # combine bound
                     t = self.combineBound(theta1, theta2)
                     t = t.reshape(1, 7, 2)
-                    self.theta = np.append(self.theta, t, axis=0)
-                    print('theta ', self.theta)
+
+                    # first time authentication
+                    if len(self.theta) <= 7:
+                        self.theta = np.append(self.theta, t, axis=0)
+                    # Rewrite previous theta
+                    else:
+                        self.theta[self.i - (6 - k)] = t
+                    print('theta ', self.theta[-1])
+                    print('modify ', (self.i - (6 - k)))
+                    print('len of theta ', len(self.theta))
+                    print('i ', self.i)
                 continue
 
             # real state calculate
@@ -128,7 +140,9 @@ class SystemALLDim:
             t = t.reshape(1, 7, 2)
             self.theta = np.append(self.theta, t, axis=0)
             # self.theta = np.append(self.theta, self.combineBound(theta1, theta2))
-            print('theta ', self.theta)
+            print('theta ', self.theta[-1])
+            print('len of theta ', len(self.theta))
+            print('i ', self.i)
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
