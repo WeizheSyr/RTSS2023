@@ -11,7 +11,7 @@ class Authenticate:
         self.INF = inf
         self.m = exp.sysd.A.shape[0]    # dimension of A
         self.n = n                      # dimension of u
-        self.timestep = 2 * self.m      # dimension of timestep
+        self.timestep = self.m      # dimension of timestep
 
         # optimal value
         self.x = np.zeros(self.m)

@@ -8,7 +8,7 @@ import numpy as np
 
 tao = np.ones(7) * 0.5
 # tao = [0.5] * 7
-detector = window(tao, 7, 14)
+detector = window(tao, 7, 10)
 exp = Platoon
 # attack = [np.array([0.01])] * 20
 attack_duration = 20
