@@ -1,5 +1,6 @@
 import numpy as np
 from Authenticate import Authenticate
+np.set_printoptions(suppress=True)
 
 
 class SystemALLDim:
@@ -88,24 +89,23 @@ class SystemALLDim:
                 self.auth.getAuth()
                 print('auth.x', self.auth.x)
                 print('states', exp.model.feedbacks[exp.model.cur_index - self.auth.timestep])
+                print('x_hat', self.y_hat[exp.model.cur_index - self.auth.timestep])
                 self.auth.getAllBound()
                 self.authT.append(exp.model.cur_index - self.auth.timestep)
                 print('timestep ', self.authT[-1])
                 print('auth.bound[0]', self.auth.bound[0])
 
                 # from auth bound to theta
-                t = self.boundToTheta(self.auth.x, self.auth.bound, self.y_hat[self.authT[-1]])
+                t = self.boundToTheta(self.auth.x, self.auth.bound, self.y_hat[exp.model.cur_index - self.auth.timestep])
                 if len(self.authT) == 1:
                     self.theta[0] = t
                 else:
                     t = t.reshape(1, 7, 2)
-                    if len(self.theta) <= 7:
-                        self.theta = np.append(self.theta, t, axis=0)
-                    else:
-                        self.theta[self.i - 1 - 7] = t
+                    print('rewrite ', self.i - 6)
+                    self.theta[self.i - 6] = t
 
                 # update real state calculate
-                for k in range(6):
+                for k in range(5):
                     # bound from system dynamic
                     theta2 = self.boundByDynamic(self.i - (6 - k), exp.model.inputs[exp.model.cur_index - (6 - k)])
                     # bound from detector
@@ -115,16 +115,15 @@ class SystemALLDim:
                     t = t.reshape(1, 7, 2)
 
                     # first time authentication
-                    if len(self.theta) <= 7:
+                    if len(self.theta) <= 6:
                         self.theta = np.append(self.theta, t, axis=0)
                     # Rewrite previous theta
                     else:
                         self.theta[self.i - (6 - k)] = t
-                    print('theta ', self.theta[-1])
-                    print('modify ', (self.i - (6 - k)))
-                    print('len of theta ', len(self.theta))
-                    print('i ', self.i)
-                continue
+                    # print('theta ', self.theta)
+                    # print('modify ', (self.i - (6 - k)))
+                    # print('len of theta ', len(self.theta))
+                    # print('i ', self.i)
 
             # real state calculate
             if len(self.authT) == 0:
@@ -140,7 +139,7 @@ class SystemALLDim:
             t = t.reshape(1, 7, 2)
             self.theta = np.append(self.theta, t, axis=0)
             # self.theta = np.append(self.theta, self.combineBound(theta1, theta2))
-            print('theta ', self.theta[-1])
+            print('theta ', self.theta)
             print('len of theta ', len(self.theta))
             print('i ', self.i)
 
@@ -190,6 +189,7 @@ class SystemALLDim:
         return theta2
 
     def combineBound(self, theta1, theta2):
+        return theta1
         theta = np.zeros([self.detector.m, 2])
         for i in range(len(theta)):
             if theta1[i][0] > theta2[i][0]:
