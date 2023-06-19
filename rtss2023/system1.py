@@ -173,6 +173,11 @@ class System1:
                 self.est1.append(self.y_hat[-1][0] + self.theta1[-1])
                 self.est2.append(self.y_hat[-1][0] + self.theta2[-1])
 
+            # reachability
+
+            # recovery-ability
+
+            # adjust threshold
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:

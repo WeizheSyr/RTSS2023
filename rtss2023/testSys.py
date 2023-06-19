@@ -5,7 +5,7 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-detector = window(14, 0.5)
+detector = window(0.5, 14)
 exp = Platoon
 # attack = [np.array([0.01])] * 20
 attack_duration = 20
