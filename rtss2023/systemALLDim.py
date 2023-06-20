@@ -1,5 +1,7 @@
 import numpy as np
 from Authenticate import Authenticate
+from reachability import Reachability
+from utils.formal.zonotope import Zonotope
 np.set_printoptions(suppress=True)
 
 
@@ -35,6 +37,14 @@ class SystemALLDim:
         self.detectResults = []
         self.detector = detector
         self.alarm_list = []
+
+        # recovery-ability
+        self.pz = Zonotope.from_box(np.eyes(7) * -0.002, np.eyes(7) * 0.002)    # process noise
+        self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
+        self.targetz = Zonotope.from_box(np.eyes(7) * 1, np.eyes(7) * 2)        # target set in zonotope
+        self.klevel = 3                                                       # keep k level recover-ability
+        self.klevels = []                                                        # k-level recover-ability
+        self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
 
         while True:
             exp.model.update_current_ref(exp.ref[self.i])
@@ -120,10 +130,6 @@ class SystemALLDim:
                     # Rewrite previous theta
                     else:
                         self.theta[self.i - (6 - k)] = t
-                    # print('theta ', self.theta)
-                    # print('modify ', (self.i - (6 - k)))
-                    # print('len of theta ', len(self.theta))
-                    # print('i ', self.i)
 
             # real state calculate
             if len(self.authT) == 0:
@@ -138,10 +144,18 @@ class SystemALLDim:
             t = self.combineBound(theta1, theta2)
             t = t.reshape(1, 7, 2)
             self.theta = np.append(self.theta, t, axis=0)
-            # self.theta = np.append(self.theta, self.combineBound(theta1, theta2))
             print('theta ', self.theta)
             print('len of theta ', len(self.theta))
             print('i ', self.i)
+
+            # reachability anaylze
+            x_hatz = self.y_hat[-1]
+            thetaz = Zonotope.from_box(self.theta[-1][0], self.theta[-1][1])
+            self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
+            if self.klevels < self.klevel:
+                # adjust threshold
+
+
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
@@ -189,7 +203,7 @@ class SystemALLDim:
         return theta2
 
     def combineBound(self, theta1, theta2):
-        return theta1
+        return theta1   # only use detector to estimate
         theta = np.zeros([self.detector.m, 2])
         for i in range(len(theta)):
             if theta1[i][0] > theta2[i][0]:

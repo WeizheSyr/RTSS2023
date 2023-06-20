@@ -68,11 +68,11 @@ class Reachability:
         return D4s
 
     # zonotope
-    def reachable_of_D23(self, x_tilda: Zonotope, theta: Zonotope):
+    def reachable_of_D23(self, x_hat, theta: Zonotope):
         D2 = []
         D3 = []
         for i in range(self.max_step):
-            D2.append(self.A_i[i] @ x_tilda)
+            D2.append(self.A_i[i] @ x_hat)
             D3.append(self.A_i_B_U[i] @ theta)
         return D2, D3
 
@@ -105,8 +105,8 @@ class Reachability:
 
     # k level recovery-ability
     # ith timestep can't recovery
-    def recovery_ability(self, x_tilda: Zonotope, theta: Zonotope):
-        D2, D3 = self.reachable_of_D23(x_tilda, theta)
+    def recovery_ability(self, x_hat, theta: Zonotope):
+        D2, D3 = self.reachable_of_D23(x_hat, theta)
         k = 0
         recover = []
         for d in range(self.max_step):
