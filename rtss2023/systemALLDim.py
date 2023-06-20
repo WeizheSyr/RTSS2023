@@ -39,9 +39,10 @@ class SystemALLDim:
         self.alarm_list = []
 
         # recovery-ability
-        self.pz = Zonotope.from_box(np.eyes(7) * -0.002, np.eyes(7) * 0.002)    # process noise
-        self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
-        self.targetz = Zonotope.from_box(np.eyes(7) * 1, np.eyes(7) * 2)        # target set in zonotope
+        self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
+        # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
+        self.uz = Zonotope.from_box(np.ones(4) * -50, np.ones(4) * 50)
+        self.targetz = Zonotope.from_box(np.ones(7) * 1, np.ones(7) * 2)        # target set in zonotope
         self.klevel = 3                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
@@ -137,25 +138,26 @@ class SystemALLDim:
             if self.authT[-1] == self.i:
                 continue
             # bound from system dynamic
-            theta2 = self.boundByDynamic(self.i - 1, exp.model.inputs[exp.model.cur_index - 1])
+            # theta2 = self.boundByDynamic(self.i - 1, exp.model.inputs[exp.model.cur_index - 1])
             # bound from detector
             theta1 = self.boundByDetector(self.i - 1)
             # combine bound
-            t = self.combineBound(theta1, theta2)
+            # t = self.combineBound(theta1, theta2)
+            t = theta1
             t = t.reshape(1, 7, 2)
             self.theta = np.append(self.theta, t, axis=0)
-            print('theta ', self.theta)
-            print('len of theta ', len(self.theta))
+            print('theta ', self.theta[-1])
+            # print('len of theta ', len(self.theta))
             print('i ', self.i)
 
             # reachability anaylze
             x_hatz = self.y_hat[-1]
-            thetaz = Zonotope.from_box(self.theta[-1][0], self.theta[-1][1])
+            thetaz = Zonotope.from_box(self.theta[-1,:,0], self.theta[-1,:,1])
             self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
-            if self.klevels < self.klevel:
+            print('recovery-ability: ', self.klevels[-1][0])
+            if self.klevels[-1][0] < self.klevel:
                 # adjust threshold
-
-
+                print('adjust threshold')
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
