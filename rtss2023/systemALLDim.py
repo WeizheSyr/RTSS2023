@@ -170,6 +170,7 @@ class SystemALLDim:
                 # adjust threshold
                 print('adjust threshold')
 
+
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
                 exp.model.reset()
@@ -193,8 +194,13 @@ class SystemALLDim:
             pOrN[i] = self.residuals[t][i] < 0 and -1 or 1
         l = len(self.y)
         rsum = np.zeros(self.detector.m)
-        for i in range(t):
-            rsum += abs(self.residuals[t - i])
+        # for i in range(t):
+        if len(self.residuals) >= self.detector.w:
+            for i in range(self.detector.w):
+                rsum += abs(self.residuals[t - i])
+        else:
+            for i in range(len(self.residuals)):
+                rsum += abs(self.residuals[t - i])
 
         temp = np.array(self.detector.tao) - rsum + abs(self.y_hat[t] - self.y_tilda[t])
         temp = self.A @ temp
