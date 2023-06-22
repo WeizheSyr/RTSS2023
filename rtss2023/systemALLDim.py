@@ -155,6 +155,12 @@ class SystemALLDim:
             print('state', exp.model.feedbacks[self.i - 1])
             print('hat', self.y_hat[self.i - 1])
 
+            # check correctness
+            if self.i >= 9:
+                for i in range(7):
+                    if self.theta[-1][i][0] >= self.theta[-1][i][1]:
+                        print("violate")
+
             # reachability anaylze
             x_hatz = self.y_hat[-1]
             thetaz = Zonotope.from_box(self.theta[-1,:,0], self.theta[-1,:,1])
@@ -209,6 +215,12 @@ class SystemALLDim:
             else:
                 theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002)[i]
                 theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+
+        # t0 = -self.detector.tao + rsum - abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002
+        # t1 = self.detector.tao - rsum + abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002
+        # for i in range(len(pOrN)):
+        #     theta1[i][0] = t0[i]
+        #     theta1[i][1] = t1[i]
         return theta1
 
     def boundByDynamic(self, t, u):
