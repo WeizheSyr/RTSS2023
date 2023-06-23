@@ -7,7 +7,7 @@ class Reachability:
     Analyze the reachable set
     Platoon for test
     """
-    def __init__(self, A, B, p: Zonotope, U: Zonotope, target: Zonotope, max_step=20, c=None):
+    def __init__(self, A, B, p: Zonotope, U: Zonotope, target: Zonotope, max_step=40, c=None):
         self.A = A
         self.B = B
         self.p = p
@@ -102,6 +102,8 @@ class Reachability:
             D_low_s.append(temp2)
 
             # check intersection
+            if D_up_s[i] <= 0 or D_low_s[i] <= 0:
+                result = False
             if self.E_low_s[d][i] > D_up_s[i] or self.E_up_s[d][i] < D_low_s[i]:
                 result = False
 

@@ -42,7 +42,7 @@ class SystemALLDim:
         # recovery-ability
         self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
-        self.uz = Zonotope.from_box(np.ones(4) * -50, np.ones(4) * 50)
+        self.uz = Zonotope.from_box(np.ones(4) * -10, np.ones(4) * 10)
         self.targetz = Zonotope.from_box(np.ones(7) * 1, np.ones(7) * 2)        # target set in zonotope
         self.klevel = 3                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
@@ -82,7 +82,9 @@ class SystemALLDim:
             alarm = self.detector.alarmOrN()
             if alarm:
                 print("alarm at", exp.model.cur_index)
-                exit(1)
+                return
+            if self.i >= 40:
+                return
 
             # authentication
             if len(self.authQueueInput) == self.auth.timestep:
@@ -149,15 +151,15 @@ class SystemALLDim:
             t = theta1                                      # only use detector estimation
             t = t.reshape(1, 7, 2)
             self.theta = np.append(self.theta, t, axis=0)
-            print('theta ', self.theta[-1])
+            print('theta ', self.theta[-1][0])
             # print('len of theta ', len(self.theta))
             print('i ', self.i)
-            print('state', exp.model.feedbacks[self.i - 1])
-            print('hat', self.y_hat[self.i - 1])
+            print('state', exp.model.feedbacks[self.i - 1][0])
+            print('hat', self.y_hat[self.i - 1][0])
 
             # reachability anaylze
             x_hatz = self.y_hat[-1]
-            thetaz = Zonotope.from_box(self.theta[-1,:,0], self.theta[-1,:,1])
+            thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
             self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
             print('recovery-ability: ', self.klevels[-1][0])
             if self.klevels[-1][0] < self.klevel:
