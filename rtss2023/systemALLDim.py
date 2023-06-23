@@ -42,8 +42,9 @@ class SystemALLDim:
         # recovery-ability
         self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
-        self.uz = Zonotope.from_box(np.ones(4) * -10, np.ones(4) * 10)
-        self.targetz = Zonotope.from_box(np.ones(7) * 1, np.ones(7) * 2)        # target set in zonotope
+        self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)
+        # self.targetz = Zonotope.from_box(np.ones(7) * 1, np.ones(7) * 1.5)        # target set in zonotope
+        self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([1, 1, 1, 0, 0, 0, 0]))
         self.klevel = 3                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
@@ -83,7 +84,7 @@ class SystemALLDim:
             if alarm:
                 print("alarm at", exp.model.cur_index)
                 return
-            if self.i >= 40:
+            if self.i >= 80:
                 return
 
             # authentication
@@ -115,11 +116,11 @@ class SystemALLDim:
                     self.theta[0] = t
                 else:
                     t = t.reshape(1, 7, 2)
-                    print('rewrite ', self.i - 6)
-                    self.theta[self.i - 6] = t
+                    print('rewrite ', self.i - 6, t)
+                    self.theta[self.i - 7] = t
 
                 # update real state calculate
-                for k in range(6):
+                for k in range(5):
                     # bound from system dynamic
                     # theta2 = self.boundByDynamic(self.i - (6 - k), exp.model.inputs[exp.model.cur_index - (6 - k)])
                     # bound from detector
@@ -135,7 +136,8 @@ class SystemALLDim:
                         self.theta = np.append(self.theta, t, axis=0)
                     # Rewrite previous theta
                     else:
-                        self.theta[self.i - 6 + k] = t
+                        self.theta[self.i - 7 + k + 1] = t
+                        print("recalculate, ", self.theta[self.i - 7 + k + 1][0])
 
             # real state calculate
             if len(self.authT) == 0:

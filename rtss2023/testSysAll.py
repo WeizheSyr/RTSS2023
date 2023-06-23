@@ -22,9 +22,12 @@ x_hat_arr = [x[0] for x in sys.y_hat]
 x_tilda_arr = [x[0] for x in sys.y_tilda]
 x_low = []
 x_up = []
-for i in range(len(x_hat_arr)):
+for i in range(len(x_hat_arr) - 1):
     x_low.append(x_hat_arr[i] + sys.theta[i][0][0])
     x_up.append(x_hat_arr[i] + sys.theta[i][0][1])
+
+print(sys.theta[:, 0, 0])
+print(sys.theta[:, 0, 1])
 
 reach = [x[0] for x in sys.klevels]
 
