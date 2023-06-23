@@ -157,6 +157,12 @@ class SystemALLDim:
             print('state', exp.model.feedbacks[self.i - 1][0])
             print('hat', self.y_hat[self.i - 1][0])
 
+            # check correctness
+            if self.i >= 9:
+                for i in range(7):
+                    if self.theta[-1][i][0] >= self.theta[-1][i][1]:
+                        print("violate")
+
             # reachability anaylze
             x_hatz = self.y_hat[-1]
             thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
@@ -165,6 +171,7 @@ class SystemALLDim:
             if self.klevels[-1][0] < self.klevel:
                 # adjust threshold
                 print('adjust threshold')
+
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
@@ -189,8 +196,13 @@ class SystemALLDim:
             pOrN[i] = self.residuals[t][i] < 0 and -1 or 1
         l = len(self.y)
         rsum = np.zeros(self.detector.m)
-        for i in range(t):
-            rsum += abs(self.residuals[t - i])
+        # for i in range(t):
+        if len(self.residuals) >= self.detector.w:
+            for i in range(self.detector.w):
+                rsum += abs(self.residuals[t - i])
+        else:
+            for i in range(len(self.residuals)):
+                rsum += abs(self.residuals[t - i])
 
         temp = np.array(self.detector.tao) - rsum + abs(self.y_hat[t] - self.y_tilda[t])
         temp = self.A @ temp
@@ -211,6 +223,12 @@ class SystemALLDim:
             else:
                 theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002)[i]
                 theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+
+        # t0 = -self.detector.tao + rsum - abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002
+        # t1 = self.detector.tao - rsum + abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002
+        # for i in range(len(pOrN)):
+        #     theta1[i][0] = t0[i]
+        #     theta1[i][1] = t1[i]
         return theta1
 
     def boundByDynamic(self, t, u):
