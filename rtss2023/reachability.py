@@ -64,7 +64,7 @@ class Reachability:
             temp = []
             if i == 0:
                 for j in range(self.A.shape[0]):
-                    temp.append((self.A_i[0] @ self.p).support(-1 * self.l[j]))
+                    temp.append(0)
             else:
                 for j in range(self.A.shape[0]):
                     temp.append(D4s[-1][j] + (self.A_i[i] @ self.p).support(-1 * self.l[j]))
@@ -103,7 +103,9 @@ class Reachability:
             D_low_s.append(temp2)
 
             # check intersection
-            if D_up_s[i] <= 0 or D_low_s[i] <= 0:
+            # if D_up_s[i] <= 0 or D_low_s[i] <= 0:
+            #     result = False
+            if D_up_s[i] <= D_low_s[i]:
                 result = False
             if self.E_low_s[d][i] > D_up_s[i] or self.E_up_s[d][i] < D_low_s[i]:
                 result = False
@@ -133,53 +135,70 @@ class Reachability:
                 return k, i
         return k, self.max_step
 
-    # give the amount of theta adjustment
-    # give the direction of adjustment
-    def direction(self, k, i, D2, D3, klevel):
-        result = True
+    # give the direction of adjustment for each dimension of reachability set
+    # k: current recover-ability( get from recovery_ability())
+    # last: one after last recover( get from recovery_ability())
+    def direction(self, D2, D3, klevel, k, last):
+        direct = np.zeros(self.A.shape[0])
+        if k > klevel:
+            direct = direct - 1
+            return direct
+
+        # k < klevel
         D_up_s = []
         D_low_s = []
-        delta_theta = []
-
-        if k < klevel:
-            t = i + klevel - k + 1
-        else:
-            t = k + 1
 
         # i: l direction
         for i in range(self.A.shape[0]):
             # D_up_s
-            temp1 = self.D1s[t][i]
+            temp1 = self.D1s[last][i]
             temp1 += (-1 * self.l[i]).T @ D2[i]
             temp1 += D3[i].support(-1 * self.l[i])
-            temp1 += self.D4s[t][i]
+            temp1 += self.D4s[last][i]
             D_up_s.append(temp1)
 
             # D_low_s
-            temp2 = self.D1s[t][i]
+            temp2 = self.D1s[last][i]
             temp2 -= (-1 * self.l[i]).T @ D2[i]
             temp2 -= D3[i].support(-1 * self.l[i])
-            temp2 -= self.D4s[t][i]
+            temp2 -= self.D4s[last][i]
             D_low_s.append(temp2)
 
-            if k < klevel:
-                # increase k
-                if self.E_up_s[i] >= D_up_s[i]:
-                    # up
-                    direct.append(1)
-                else:
-                    # down
-                    direct.append(-1)
-            else:
-                # decrease k
-                if self.E_up_s[i] >= D_up_s[i]:
-                    # down
-                    direct.append(-1)
-                else:
-                    # up
-                    direct.append(1)
-
-
-
+            if D_up_s[i] <= D_low_s[i]:
+                direct[i] = 1
 
         return direct
+
+    # give the amount of theta adjustment
+    # def adjust(self, D2, D3, klevel, k, last, direct):
+    #     delta_theta = []
+    #     for i in range(self.A.shape[0]):
+    #         last = last + 1
+    #         if direct[i] == 0:
+    #             delta_theta.append(0)
+    #             continue
+    #         elif direct[i] == 1:
+    #             # increase D
+    #             up_old_s = self.D1s[last][i]
+    #             up_old_s += (-1 * self.l[i]).T @ D2[i]
+    #             up_old_s += D3[i].support(-1 * self.l[i])
+    #             up_old_s += self.D4s[last][i]
+    #
+    #             low_old_s = self.D1s[last][i]
+    #             low_old_s -= (-1 * self.l[i]).T @ D2[i]
+    #             low_old_s -= D3[i].support(-1 * self.l[i])
+    #             low_old_s -= self.D4s[last][i]
+    #
+    #             assert low_old_s >= up_old_s
+    #
+    #
+    #
+    #             delta_theta.append()
+    #         elif direct[i] == -1:
+    #             # decrease D
+    #
+    #
+    #     return
+    #
+    # def from_dist_to_theta(self, d, dist):
+    #
