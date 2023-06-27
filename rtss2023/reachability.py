@@ -24,6 +24,7 @@ class Reachability:
         self.E_up_s, self.E_low_s = self.reachable_of_E()
         self.D1s = self.D1_support_function()
         self.D4s = self.D4_support_function()
+        self.inter = []
 
     # control envelope
     # support function
@@ -116,11 +117,11 @@ class Reachability:
     # k level recovery-ability
     # ith timestep can't recovery
     def recovery_ability(self, x_hat, theta: Zonotope):
-        D2, D3 = self.reachable_of_D23(x_hat, theta)
+        self.D2, self.D3 = self.reachable_of_D23(x_hat, theta)
         k = 0
         recover = []
         for d in range(self.max_step):
-            recover.append(self.check_recovery(d, D2, D3))
+            recover.append(self.check_recovery(d, self.D2, self.D3))
 
         print("recover,", recover)
 
@@ -130,3 +131,54 @@ class Reachability:
             if k > 0 and recover[i] == 0:
                 return k, i
         return k, self.max_step
+
+    # give the amount of theta adjustment
+    # give the direction of adjustment
+    def direction(self, k, i, D2, D3, klevel):
+        result = True
+        D_up_s = []
+        D_low_s = []
+        delta_theta = []
+
+        if k < klevel:
+            t = i + klevel - k + 1
+        else:
+            t = k + 1
+
+        # i: l direction
+        for i in range(self.A.shape[0]):
+            # D_up_s
+            temp1 = self.D1s[t][i]
+            temp1 += (-1 * self.l[i]).T @ D2[i]
+            temp1 += D3[i].support(-1 * self.l[i])
+            temp1 += self.D4s[t][i]
+            D_up_s.append(temp1)
+
+            # D_low_s
+            temp2 = self.D1s[t][i]
+            temp2 -= (-1 * self.l[i]).T @ D2[i]
+            temp2 -= D3[i].support(-1 * self.l[i])
+            temp2 -= self.D4s[t][i]
+            D_low_s.append(temp2)
+
+            if k < klevel:
+                # increase k
+                if self.E_up_s[i] >= D_up_s[i]:
+                    # up
+                    direct.append(1)
+                else:
+                    # down
+                    direct.append(-1)
+            else:
+                # decrease k
+                if self.E_up_s[i] >= D_up_s[i]:
+                    # down
+                    direct.append(-1)
+                else:
+                    # up
+                    direct.append(1)
+
+
+
+
+        return direct
