@@ -137,7 +137,7 @@ class SystemALLDim:
                     # Rewrite previous theta
                     else:
                         self.theta[self.i - 7 + k + 1] = t
-                        print("recalculate, ", self.theta[self.i - 7 + k + 1][0])
+                        print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
 
             # real state calculate
             if len(self.authT) == 0:
@@ -170,10 +170,9 @@ class SystemALLDim:
             thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
             self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
             print('recovery-ability: ', self.klevels[-1][0])
-            if self.klevels[-1][0] < self.klevel:
+            if self.klevels[-1][0] != self.klevel:
                 # adjust threshold
                 print('adjust threshold')
-
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
@@ -218,19 +217,19 @@ class SystemALLDim:
         #         theta1[i][0] = (-temp - [0.002] * self.detector.m + self.A @ self.theta[t - 1, :, 0])[i]
         #         theta1[i][1] = (self.A @ self.theta[t - 1, :, 1])[i]
 
-        for i in range(len(pOrN)):
-            if pOrN[i] > 0:
-                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
-                theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.theta[t - 1, :, 1] + 0.002)[i]
-            else:
-                theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002)[i]
-                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
-
-        # t0 = -self.detector.tao + rsum - abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002
-        # t1 = self.detector.tao - rsum + abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002
         # for i in range(len(pOrN)):
-        #     theta1[i][0] = t0[i]
-        #     theta1[i][1] = t1[i]
+        #     if pOrN[i] > 0:
+        #         theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
+        #         theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.theta[t - 1, :, 1] + 0.002)[i]
+        #     else:
+        #         theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002)[i]
+        #         theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+
+        t0 = -self.detector.tao + rsum - abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002
+        t1 = self.detector.tao - rsum + abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002
+        for i in range(len(pOrN)):
+            theta1[i][0] = t0[i]
+            theta1[i][1] = t1[i]
         return theta1
 
     def boundByDynamic(self, t, u):
