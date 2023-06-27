@@ -115,6 +115,7 @@ class Reachability:
 
     # k level recovery-ability
     # ith timestep can't recovery
+    # dist< E_i-1, D_i-1>
     def recovery_ability(self, x_hat, theta: Zonotope):
         D2, D3 = self.reachable_of_D23(x_hat, theta)
         k = 0
