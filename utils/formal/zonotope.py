@@ -73,12 +73,15 @@ class Zonotope:
         return Zonotope(c, g)
 
     # support function along l direction
-    def support(self, l: np.ndarray):
+    def support(self, l: np.ndarray, direction=1):
         assert l.shape == (self.dim,)
         A_T_l = self.g.T @ l
         rho_A_T_l = np.linalg.norm(A_T_l, ord=1)
         rho_c = l @ self.c
-        return rho_c + rho_A_T_l
+        if direction==1:
+            return rho_c + rho_A_T_l
+        else:
+            return rho_c - rho_A_T_l
 
     # all generators contributing to the farther vertex along l
     def vertex_with_max_support(self, l: np.ndarray):

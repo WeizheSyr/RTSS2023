@@ -1,6 +1,6 @@
 import numpy as np
 from Authenticate import Authenticate
-from reachability import Reachability
+from reachability1 import Reachability1
 from utils.formal.zonotope import Zonotope
 
 np.set_printoptions(suppress=True)
@@ -42,12 +42,15 @@ class SystemALLDim:
         # recovery-ability
         self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
-        self.uz = Zonotope.from_box(np.ones(4) * -20, np.ones(4) * 20)
+        self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
         self.targetz = Zonotope.from_box(np.array([0, 0, 0, -5, -5, -5, -5]), np.array([1, 1, 1, 5, 5, 5, 5]))
+        self.target_low = np.array([0, 0, 0, -5, -5, -5, -5])
+        self.target_up = np.array([1, 1, 1, 5, 5, 5, 5])
         self.klevel = 3                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
-        self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
+        # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
+        self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
 
         while True:
             exp.model.update_current_ref(exp.ref[self.i])
@@ -168,7 +171,8 @@ class SystemALLDim:
             # reachability anaylze
             x_hatz = self.y_hat[-1]
             thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
-            self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
+            result = self.reach.recovery_ability(x_hatz, thetaz)
+            # self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
             print('recovery-ability: ', self.klevels[-1][0])
             if self.klevels[-1][0] != self.klevel:
                 # adjust threshold
