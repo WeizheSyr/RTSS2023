@@ -25,10 +25,21 @@ class window:
         else:
             return False    # no alert
 
+    def detectagain(self, dim):
+        if sum(self.queue[dim]) > self.tao[dim]:
+            return True    # alert
+        else:
+            return False    # no alert
+
     # residuals: residual data for all dimension in this timestep
     def detect(self, residuals):
         for i in range(self.m):
             self.results[i] = self.detectOneDim(residuals[i], i)
+        return self.results
+
+    def detectagain1(self, residuals):
+        for i in range(self.m):
+            self.results[i] = self.detectagain(i)
         return self.results
 
     def alarmOrN(self):
@@ -36,3 +47,9 @@ class window:
             return True
         else:
             return False
+
+    def adjust(self, delta_theta):
+        for i in range(self.m):
+            self.tao[i] = self.tao[i] + self.tao[i] * delta_theta[i]
+        print("new tao", self.tao)
+

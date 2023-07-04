@@ -29,7 +29,7 @@ for i in range(len(x_hat_arr) - 1):
 print(sys.theta[:, 0, 0])
 print(sys.theta[:, 0, 1])
 
-reach = [x[0] for x in sys.klevels]
+reach = [x for x in sys.klevels]
 
 plt.figure()
 plt.subplot(1, 2, 1)

@@ -2,11 +2,13 @@ import numpy as np
 from Authenticate import Authenticate
 from reachability1 import Reachability1
 from utils.formal.zonotope import Zonotope
+# from goto import with_goto
 
 np.set_printoptions(suppress=True)
 
 
 class SystemALLDim:
+    # @with_goto
     def __init__(self, detector, exp, attack=None, attack_duration=50):
         self.i = 0
         self.index_list = []
@@ -44,15 +46,19 @@ class SystemALLDim:
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
         self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
-        self.targetz = Zonotope.from_box(np.array([0, 0, 0, -5, -5, -5, -5]), np.array([1, 1, 1, 5, 5, 5, 5]))
-        self.target_low = np.array([0, 0, 0, -5, -5, -5, -5])
-        self.target_up = np.array([1, 1, 1, 5, 5, 5, 5])
+        # self.targetz = Zonotope.from_box(np.array([0, 0, 0, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1, 1]))
+
+        self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([0.5, 0.5, 0.5, 1, 1, 1, 1]))
+
+        self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
+        self.target_up = np.array([1, 1, 1, 1, 1, 1, 1])
         self.klevel = 3                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
         self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
 
         while True:
+            first = 0
             exp.model.update_current_ref(exp.ref[self.i])
             exp.model.evolve()
             self.i += 1
@@ -67,6 +73,8 @@ class SystemALLDim:
             # # without attack
             # if exp.model.cur_index < exp.attack_start_index:
             #     continue
+
+            # label .begin
 
             # under attack
             if exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration - 1:
@@ -99,6 +107,7 @@ class SystemALLDim:
 
             self.authTimestep += 1
             if self.authTimestep == self.auth.timestep:
+                justAuth = 1
                 self.authTimestep = 0
                 authQueueInput1 = self.authQueueInput[::-1]
                 authQueueFeed1 = self.authQueueFeed[::-1]
@@ -137,46 +146,123 @@ class SystemALLDim:
                     # first time authentication
                     if len(self.theta) <= 7:
                         self.theta = np.append(self.theta, t, axis=0)
+                        first = 1
+                        self.klevels.append(0)
                     # Rewrite previous theta
                     else:
                         self.theta[self.i - 7 + k + 1] = t
                         print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
 
             # real state calculate
-            if len(self.authT) == 0:
-                continue
-            if self.authT[-1] == self.i:
-                continue
-            # bound from system dynamic
-            # theta2 = self.boundByDynamic(self.i - 1, exp.model.inputs[exp.model.cur_index - 1])
-            # bound from detector
-            theta1 = self.boundByDetector(self.i - 1)
-            # combine bound
-            # t = self.combineBound(theta1, theta2)
-            t = theta1                                      # only use detector estimation
-            t = t.reshape(1, 7, 2)
-            self.theta = np.append(self.theta, t, axis=0)
-            print('theta ', self.theta[-1][0])
-            # print('len of theta ', len(self.theta))
-            print('i ', self.i)
-            print('state', exp.model.feedbacks[self.i - 1][0])
-            print('hat', self.y_hat[self.i - 1][0])
+            # if len(self.authT) == 0:
+            #     continue
+            # if self.authT[-1] == self.i:
+            #     continue
+            if len(self.authT) != 0 and self.authT[-1] != self.i:
+                # bound from system dynamic
+                # theta2 = self.boundByDynamic(self.i - 1, exp.model.inputs[exp.model.cur_index - 1])
+                # bound from detector
+                theta1 = self.boundByDetector(self.i - 1)
+                # combine bound
+                # t = self.combineBound(theta1, theta2)
+                t = theta1                                      # only use detector estimation
+                t = t.reshape(1, 7, 2)
+                self.theta = np.append(self.theta, t, axis=0)
+                if first == 1:
+                    self.klevels.append(0)
+                print('theta ', self.theta[-1][0])
+                # print('len of theta ', len(self.theta))
+                print('i ', self.i)
+                print('state', exp.model.feedbacks[self.i - 1][0])
+                print('hat', self.y_hat[self.i - 1][0])
 
-            # check correctness
-            if self.i >= 9:
-                for i in range(7):
-                    if self.theta[-1][i][0] >= self.theta[-1][i][1]:
-                        print("violate")
+                # check correctness
+                if self.i >= 9:
+                    for i in range(7):
+                        if self.theta[-1][i][0] >= self.theta[-1][i][1]:
+                            print("violate")
 
-            # reachability anaylze
-            x_hatz = self.y_hat[-1]
-            thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
-            result = self.reach.recovery_ability(x_hatz, thetaz)
-            # self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
-            print('recovery-ability: ', self.klevels[-1][0])
-            if self.klevels[-1][0] != self.klevel:
-                # adjust threshold
-                print('adjust threshold')
+                # reachability anaylze
+                x_hatz = self.y_hat[-1]
+                thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
+                # result = self.reach.recoverability(x_hatz, thetaz)
+                kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
+                self.klevels.append(kresult)
+                # self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
+                print('recovery-ability: ', self.klevels[-1])
+                # if abs(self.klevels[-1] - self.klevel) >= 2:
+                #     # adjust threshold
+                #     print('adjust threshold')
+                #     delta_theta = self.reach.adjust(kresult, start_step, end_step, self.klevel)
+                #     self.detector.adjust(delta_theta)
+                #     # goto .begin
+
+
+
+                while(True):
+                    if justAuth == 1:
+                        justAuth = 0
+                        break
+                    if abs(self.klevels[-1] - self.klevel) >= 2:
+                        # adjust threshold
+                        print('adjust threshold')
+                        delta_theta = self.reach.adjust(kresult, start_step, end_step, self.klevel)
+                        print("delta_theta", delta_theta)
+
+                        self.detector.adjust(delta_theta)
+                    else:
+                        break
+
+                    self.detectResults[-1] = self.detector.detectagain1(residual)
+                    alarm = self.detector.alarmOrN()
+                    if alarm:
+                        print("alarm at", exp.model.cur_index)
+                        return
+                    if self.i >= 80:
+                        return
+
+                    # if self.authTimestep == self.auth.timestep:
+                    #     # update real state calculate
+                    #     for k in range(5):
+                    #         # bound from detector
+                    #         theta1 = self.boundByDetector(self.i - 7 + k)
+                    #
+                    #         t = theta1.reshape(1, 7, 2)  # only use detector estimation
+                    #
+                    #         self.theta[self.i - 7 + k + 1] = t
+                    #         # print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
+
+                    # real state calculate
+                    # if len(self.authT) == 0:
+                    #     continue
+                    # if self.authT[-1] == self.i:
+                    #     continue
+
+                    # bound from detector
+                    theta1 = self.boundByDetector(self.i - 1)
+                    # combine bound
+                    # t = self.combineBound(theta1, theta2)
+                    t = theta1  # only use detector estimation
+                    t = t.reshape(1, 7, 2)
+                    self.theta[-1] = t
+                    # if first == 1:
+                    #     self.klevels.append(0)
+                    print('theta ', self.theta[-1])
+                    # print('len of theta ', len(self.theta))
+                    print('i ', self.i)
+                    print('state', exp.model.feedbacks[self.i - 1][0])
+                    print('hat', self.y_hat[self.i - 1][0])
+
+                    x_hatz = self.y_hat[-1]
+                    thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
+                    # result = self.reach.recoverability(x_hatz, thetaz)
+                    kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
+                    self.klevels[-1] = kresult
+                    # self.klevels.append(kresult)
+                    print('recovery-ability: ', self.klevels[-1])
+
+
+
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
