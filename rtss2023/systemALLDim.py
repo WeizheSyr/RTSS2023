@@ -52,10 +52,12 @@ class SystemALLDim:
 
         self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
         self.target_up = np.array([1, 1, 1, 1, 1, 1, 1])
-        self.klevel = 3                                                       # keep k level recover-ability
+        self.klevel = 4                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
         self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
+
+        justAuth = 0
 
         while True:
             first = 0
@@ -95,7 +97,7 @@ class SystemALLDim:
             if alarm:
                 print("alarm at", exp.model.cur_index)
                 return
-            if self.i >= 80:
+            if self.i >= 180:
                 return
 
             # authentication
@@ -107,7 +109,7 @@ class SystemALLDim:
 
             self.authTimestep += 1
             if self.authTimestep == self.auth.timestep:
-                justAuth = 1
+                justAuth = 0
                 self.authTimestep = 0
                 authQueueInput1 = self.authQueueInput[::-1]
                 authQueueFeed1 = self.authQueueFeed[::-1]
@@ -136,7 +138,7 @@ class SystemALLDim:
                     # bound from system dynamic
                     # theta2 = self.boundByDynamic(self.i - (6 - k), exp.model.inputs[exp.model.cur_index - (6 - k)])
                     # bound from detector
-                    theta1 = self.boundByDetector(self.i - 7 + k)
+                    theta1 = self.boundByDetector(self.i - 7 + k + 1)
                     # combine bound
                     # t = self.combineBound(theta1, theta2)
                     # t = t.reshape(1, 7, 2)
@@ -153,11 +155,9 @@ class SystemALLDim:
                         self.theta[self.i - 7 + k + 1] = t
                         print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
 
-            # real state calculate
-            # if len(self.authT) == 0:
-            #     continue
-            # if self.authT[-1] == self.i:
-            #     continue
+            else:
+                justAuth = justAuth + 1
+
             if len(self.authT) != 0 and self.authT[-1] != self.i:
                 # bound from system dynamic
                 # theta2 = self.boundByDynamic(self.i - 1, exp.model.inputs[exp.model.cur_index - 1])
@@ -171,24 +171,21 @@ class SystemALLDim:
                 if first == 1:
                     self.klevels.append(0)
                 print('theta ', self.theta[-1][0])
-                # print('len of theta ', len(self.theta))
                 print('i ', self.i)
                 print('state', exp.model.feedbacks[self.i - 1][0])
                 print('hat', self.y_hat[self.i - 1][0])
 
                 # check correctness
-                if self.i >= 9:
-                    for i in range(7):
-                        if self.theta[-1][i][0] >= self.theta[-1][i][1]:
-                            print("violate")
+                # if self.i >= 9:
+                #     for i in range(7):
+                #         if self.theta[-1][i][0] >= self.theta[-1][i][1]:
+                #             print("violate")
 
                 # reachability anaylze
                 x_hatz = self.y_hat[-1]
                 thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
-                # result = self.reach.recoverability(x_hatz, thetaz)
                 kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                 self.klevels.append(kresult)
-                # self.klevels.append(self.reach.recovery_ability(x_hatz, thetaz))
                 print('recovery-ability: ', self.klevels[-1])
                 # if abs(self.klevels[-1] - self.klevel) >= 2:
                 #     # adjust threshold
@@ -200,15 +197,14 @@ class SystemALLDim:
 
 
                 while(True):
-                    if justAuth == 1:
-                        justAuth = 0
-                        break
+                    # if justAuth == 1:
+                    #     justAuth = 0
+                    #     break
                     if abs(self.klevels[-1] - self.klevel) >= 2:
                         # adjust threshold
                         print('adjust threshold')
                         delta_theta = self.reach.adjust(kresult, start_step, end_step, self.klevel)
                         print("delta_theta", delta_theta)
-
                         self.detector.adjust(delta_theta)
                     else:
                         break
@@ -218,49 +214,39 @@ class SystemALLDim:
                     if alarm:
                         print("alarm at", exp.model.cur_index)
                         return
-                    if self.i >= 80:
-                        return
 
-                    # if self.authTimestep == self.auth.timestep:
+                    # if justAuth == 1:
+                    #     justAuth = 0
                     #     # update real state calculate
-                    #     for k in range(5):
-                    #         # bound from detector
-                    #         theta1 = self.boundByDetector(self.i - 7 + k)
-                    #
-                    #         t = theta1.reshape(1, 7, 2)  # only use detector estimation
-                    #
-                    #         self.theta[self.i - 7 + k + 1] = t
-                    #         # print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
+                    # for k in range(5):
+                    #     # bound from detector
+                    #     theta1 = self.boundByDetector(self.i - 7 + k)
+                    #     t = theta1.reshape(1, 7, 2)  # only use detector estimation
+                    #     self.theta[self.i - 7 + k + 1] = t
 
-                    # real state calculate
-                    # if len(self.authT) == 0:
-                    #     continue
-                    # if self.authT[-1] == self.i:
-                    #     continue
+                    for k in range(5 + justAuth):
+                        # bound from detector
+                        theta1 = self.boundByDetector(self.i - 7 - justAuth + k + 1)
+                        t = theta1.reshape(1, 7, 2)  # only use detector estimation
+                        self.theta[self.i - 7 - justAuth + k + 1] = t
 
                     # bound from detector
                     theta1 = self.boundByDetector(self.i - 1)
-                    # combine bound
-                    # t = self.combineBound(theta1, theta2)
                     t = theta1  # only use detector estimation
                     t = t.reshape(1, 7, 2)
                     self.theta[-1] = t
                     # if first == 1:
                     #     self.klevels.append(0)
                     print('theta ', self.theta[-1])
-                    # print('len of theta ', len(self.theta))
                     print('i ', self.i)
-                    print('state', exp.model.feedbacks[self.i - 1][0])
-                    print('hat', self.y_hat[self.i - 1][0])
+                    print('state', exp.model.feedbacks[self.i - 1])
+                    print('hat', self.y_hat[self.i - 1])
 
                     x_hatz = self.y_hat[-1]
                     thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
-                    # result = self.reach.recoverability(x_hatz, thetaz)
                     kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                     self.klevels[-1] = kresult
-                    # self.klevels.append(kresult)
                     print('recovery-ability: ', self.klevels[-1])
-
 
 
 
@@ -299,13 +285,6 @@ class SystemALLDim:
         temp = self.A @ temp
 
         theta1 = np.zeros([self.detector.m, 2])
-        # for i in range(len(pOrN)):
-        #     if pOrN[i] > 0:
-        #         theta1[i][0] = (self.A @ self.theta[t - 1, :, 0])[i]
-        #         theta1[i][1] = (temp + [0.002] * self.detector.m + self.A @ self.theta[t - 1, :, 1])[i]
-        #     else:
-        #         theta1[i][0] = (-temp - [0.002] * self.detector.m + self.A @ self.theta[t - 1, :, 0])[i]
-        #         theta1[i][1] = (self.A @ self.theta[t - 1, :, 1])[i]
 
         for i in range(len(pOrN)):
             if pOrN[i] > 0:
@@ -314,32 +293,26 @@ class SystemALLDim:
             else:
                 theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002)[i]
                 theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
-
-        # t0 = -self.detector.tao + rsum - abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002
-        # t1 = self.detector.tao - rsum + abs(self.residuals[t]) - self.residuals[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002
-        # for i in range(len(pOrN)):
-        #     theta1[i][0] = t0[i]
-        #     theta1[i][1] = t1[i]
         return theta1
 
-    def boundByDynamic(self, t, u):
-        theta2 = np.zeros([7, 2])
-        theta2[:, 0] = self.A @ (self.y_hat[t - 1] + self.theta[t - 1, :, 0]) + self.B @ u - 0.002
-        theta2[:, 1] = self.A @ (self.y_hat[t - 1] + self.theta[t - 1, :, 1]) + self.B @ u + 0.002
-        return theta2
+    # def boundByDynamic(self, t, u):
+    #     theta2 = np.zeros([7, 2])
+    #     theta2[:, 0] = self.A @ (self.y_hat[t - 1] + self.theta[t - 1, :, 0]) + self.B @ u - 0.002
+    #     theta2[:, 1] = self.A @ (self.y_hat[t - 1] + self.theta[t - 1, :, 1]) + self.B @ u + 0.002
+    #     return theta2
 
-    def combineBound(self, theta1, theta2):
-        return theta1   # only use detector to estimate
-
-        theta = np.zeros([self.detector.m, 2])
-        for i in range(len(theta)):
-            if theta1[i][0] > theta2[i][0]:
-                theta[i][0] = theta1[i][0]
-            else:
-                theta[i][0] = theta2[i][0]
-
-            if theta1[i][1] > theta2[i][1]:
-                theta[i][1] = theta2[i][1]
-            else:
-                theta[i][1] = theta1[i][1]
-        return theta
+    # def combineBound(self, theta1, theta2):
+    #     return theta1   # only use detector to estimate
+    #
+    #     theta = np.zeros([self.detector.m, 2])
+    #     for i in range(len(theta)):
+    #         if theta1[i][0] > theta2[i][0]:
+    #             theta[i][0] = theta1[i][0]
+    #         else:
+    #             theta[i][0] = theta2[i][0]
+    #
+    #         if theta1[i][1] > theta2[i][1]:
+    #             theta[i][1] = theta2[i][1]
+    #         else:
+    #             theta[i][1] = theta1[i][1]
+    #     return theta
