@@ -25,18 +25,27 @@ x_up = []
 for i in range(len(x_hat_arr) - 1):
     x_low.append(x_hat_arr[i] + sys.theta[i][0][0])
     x_up.append(x_hat_arr[i] + sys.theta[i][0][1])
+tao_arr0 = [x[1] for x in sys.taos]
+tao_arr1 = [x[4] for x in sys.taos]
 
-print(sys.theta[:, 0, 0])
-print(sys.theta[:, 0, 1])
+# print(sys.theta[:, 0, 0])
+# print(sys.theta[:, 0, 1])
+# print(sys.taos)
 
 reach = [x for x in sys.klevels]
 
 plt.figure()
-plt.subplot(1, 2, 1)
+plt.subplot(2, 2, 1)
 plt.plot(x_low, c='red', linestyle=':', label='x_low')
 plt.plot(x_up, c='red', linestyle=':', label='x_up')
 plt.plot(x_tilda_arr, c='blue', linestyle=':', label='x_tilda_arr')
 
-plt.subplot(1, 2, 2)
+plt.subplot(2, 2, 2)
 plt.plot(reach, c='blue', linestyle=':', label='x_tilda_arr')
+
+plt.subplot(2, 2, 3)
+plt.plot(tao_arr0, c='blue', linestyle=':', label='tao')
+
+plt.subplot(2, 2, 4)
+plt.plot(tao_arr1, c='blue', linestyle=':', label='tao')
 plt.show()

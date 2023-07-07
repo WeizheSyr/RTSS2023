@@ -2,6 +2,7 @@ import numpy as np
 from Authenticate import Authenticate
 from reachability1 import Reachability1
 from utils.formal.zonotope import Zonotope
+from copy import deepcopy
 # from goto import with_goto
 
 np.set_printoptions(suppress=True)
@@ -57,6 +58,8 @@ class SystemALLDim:
         # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
         self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
 
+        self.taos = []
+
         justAuth = 0
 
         while True:
@@ -94,10 +97,12 @@ class SystemALLDim:
             self.residuals.append(residual)
             self.detectResults.append(self.detector.detect(residual))
             alarm = self.detector.alarmOrN()
+            temp = deepcopy(self.detector.tao)
+            self.taos.append(temp)
             if alarm:
                 print("alarm at", exp.model.cur_index)
                 return
-            if self.i >= 180:
+            if self.i >= 100:
                 return
 
             # authentication
@@ -206,6 +211,8 @@ class SystemALLDim:
                         delta_theta = self.reach.adjust(kresult, start_step, end_step, self.klevel)
                         print("delta_theta", delta_theta)
                         self.detector.adjust(delta_theta)
+                        # temp = deepcopy(self.detector.tao)
+                        self.taos[-1] = deepcopy(self.detector.tao)
                     else:
                         break
 
