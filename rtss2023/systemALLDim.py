@@ -49,11 +49,11 @@ class SystemALLDim:
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1, 1]))
 
-        self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([0.5, 0.5, 0.5, 1, 1, 1, 1]))
+        self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([1, 1, 1, 1, 1, 1, 1]))
 
         self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
         self.target_up = np.array([1, 1, 1, 1, 1, 1, 1])
-        self.klevel = 4                                                       # keep k level recover-ability
+        self.klevel = 3                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
         self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
@@ -208,7 +208,7 @@ class SystemALLDim:
                     if abs(self.klevels[-1] - self.klevel) >= 2:
                         # adjust threshold
                         print('adjust threshold')
-                        delta_theta = self.reach.adjust(kresult, start_step, end_step, self.klevel)
+                        delta_theta = self.reach.adjust_new(kresult, start_step, end_step, self.klevel)
                         print("delta_theta", delta_theta)
                         self.detector.adjust(delta_theta)
                         # temp = deepcopy(self.detector.tao)
