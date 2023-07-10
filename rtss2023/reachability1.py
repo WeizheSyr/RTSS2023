@@ -123,20 +123,26 @@ class Reachability1:
     def check_intersection(self, i):
         inter = []
         dis = []
+        # print("check intersection", i)
+        # print("D_low[i]", self.D_low[i])
+        # print("D_up[i]", self.D_up[i])
+        # print("E_low[i]", self.E_low[i])
+        # print("E_up[i]", self.E_up[i])
         for j in range(self.A.shape[0]):
-            if self.D_low[i][j] >= self.D_up[i][j]:
+            if self.D_low[i][j] > self.D_up[i][j]:
+                # print("self.D_low[i][j] > self.D_up[i][j]", self.D_low[i][j], self.D_up[i][j])
                 # D is empty set
                 inter.append(0)
             # elif self.E_up[i][j] >= self.D_low[i][j] and self.E_low[i][j] <= self.D_up[i][j]:
             #     # intersection E lower than D
             #     inter.append(1)
-            elif self.E_up[i][j] <= self.D_low[i][j]:
+            elif self.E_up[i][j] < self.D_low[i][j]:
                 # no intersection E lower than D
                 inter.append(-1)
             # elif self.E_low[i][j] <= self.D_up[i][j] and self.E_up[i][j] >= self.D_low[i][j]:
             #     # intersection E higher than D
             #     inter.append(1)
-            elif self.E_low[i][j] >= self.D_up[i][j]:
+            elif self.E_low[i][j] > self.D_up[i][j]:
                 # no intersection E higher than D
                 inter.append(-1)
             # elif self.E_low[i][j] > self.D_low[i][j] and self.E_up < self.D_up:
@@ -157,7 +163,7 @@ class Reachability1:
         for i in range(self.max_step):
             inter, dis = self.check_intersection(i)
             # print(i)
-            # print("inter", inter)
+            print("inter", inter)
             intersection.append(inter)
             distance.append(dis)
 
@@ -174,24 +180,56 @@ class Reachability1:
 
     def k_level(self, x_hat: Zonotope, theta: Zonotope):
         self.recoverability(x_hat, theta)
-        k = 0
-        start = -1
-        end = -1
+        k1 = 0
+        start1 = -1
+        end1 = -1
+        k2 = 0
+        start2 = -1
+        end2 = -1
         for i in range(self.max_step):
             if self.result[i] == 1:
-                if k == 0:
-                    start = i
-                k = k + 1
-            elif k > 0 and self.result[i] == 0:
-                # intersect
-                end = i - 1
-                return k, start, end
-        if k == 0:
-            # not intersect at all
-            return k, start, end
+                if k1 == 0:
+                    start1 = i
+                    k1 = k1 + 1
+                elif k1 != 0 and end1 == -1:
+                    k1 = k1 + 1
+                elif k1 != 0 and k2 == 0:
+                    start2 = i
+                    k2 = k2 + 1
+                elif k2 != 0:
+                    k2 = k2 + 1
+            elif self.result[i] == 0:
+                # last intersect
+                if k1 != 0 and end1 == -1:
+                    end1 = i - 1
+                elif k2 != 0 and end2 == -1:
+                    end2 = i - 1
+
+        if k1 == 1 and k2 != 0:
+            if end2 == -1:
+                end2 = self.max_step - 1
+            return k2, start2, end2
         else:
-            # intersect and end at finally
-            return k, start, self.max_step - 1
+            if end1 == -1 and k1 != 0:
+                end1 = self.max_step - 1
+            return k1, start1, end1
+
+
+        # for i in range(self.max_step):
+        #     if self.result[i] == 1:
+        #         if k == 0:
+        #             start = i
+        #         k = k + 1
+        #     elif k > 0 and self.result[i] == 0:
+        #         # intersect
+        #         end = i - 1
+        #         return k, start, end
+        # if k == 0:
+        #     # not intersect at all
+        #     return k, start, end
+        # else:
+        #     # intersect and end at finally
+        #     return k, start, self.max_step - 1
 
     def adjust_new(self, k, start, end, klevel):
         delta_theta = np.zeros(self.A.shape[0])
@@ -232,10 +270,15 @@ class Reachability1:
             elif end > -1 and start > -1:
                 # intersect and D become empty before max_step
                 # search for the empty dimension
+                flag_delta = 0
                 for j in range(self.A.shape[0]):
                     if self.D_low[end + 1][j] >= self.D_up[end + 1][j]:
                         delta_theta[j] = -0.1
+                        flag_delta = 1
                         print("# intersect and D become empty before max_step")
+                if flag_delta == 0:
+                    for j in range(self.A.shape[0]):
+                        delta_theta[j] = -0.1
             else:
                 print("unexpect situation")
 

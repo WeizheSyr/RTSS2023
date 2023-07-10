@@ -35,8 +35,8 @@ class Authenticate:
                     d[1] = np.ones(self.m) * 0.002
                 else:
                     d[i] = abs(self.A) @ d[i - 1] + d[1]
-        for i in range(self.m):
-            d[i] += np.ones(self.m) * 0.002
+        # for i in range(self.m):
+        #     d[i] += np.ones(self.m) * 0.001
         return d
 
     def getA_k(self):

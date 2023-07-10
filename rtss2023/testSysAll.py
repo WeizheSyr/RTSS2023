@@ -8,9 +8,9 @@ tao = np.ones(7) * 0.04
 # tao = [0.5] * 7
 detector = window(tao, 7, 10)
 exp = Platoon
-# attack = [np.array([0.01])] * 20
-attack_duration = 20
-attack = np.zeros(attack_duration)
+attack = [np.array([0.01])] * 30
+attack_duration = 30
+# attack = np.zeros(attack_duration)
 for i in range(attack_duration):
     attack[i] = 0.005 * i
 
