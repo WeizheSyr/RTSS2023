@@ -163,7 +163,7 @@ class Reachability1:
         for i in range(self.max_step):
             inter, dis = self.check_intersection(i)
             # print(i)
-            print("inter", inter)
+            # print("inter", inter)
             intersection.append(inter)
             distance.append(dis)
 
@@ -213,7 +213,6 @@ class Reachability1:
             if end1 == -1 and k1 != 0:
                 end1 = self.max_step - 1
             return k1, start1, end1
-
 
         # for i in range(self.max_step):
         #     if self.result[i] == 1:
@@ -277,6 +276,7 @@ class Reachability1:
                         flag_delta = 1
                         print("# intersect and D become empty before max_step")
                 if flag_delta == 0:
+                    print("unexpect situation")
                     for j in range(self.A.shape[0]):
                         delta_theta[j] = -0.1
             else:

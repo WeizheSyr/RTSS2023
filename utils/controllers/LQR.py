@@ -14,8 +14,8 @@ class LQR(Controller):
         P = solve_continuous_are(A, B, Q, R)
         self.K = inv(R) @ (B.T @ P)
 
-    def update(self, feedback_value: np.ndarray, current_time=None) -> np.ndarray:
-        cin = -self.K @ (feedback_value - self.ref)
+    def update(self, feedback_value: np.ndarray, current_time=None, u_i=np.zeros(4)) -> np.ndarray:
+        cin = -self.K @ (feedback_value - self.ref) + u_i
         if self.control_lo and self.control_up:
             for i in range(len(cin)):
                 cin[i] = np.clip(cin[i], self.control_lo, self.control_up)

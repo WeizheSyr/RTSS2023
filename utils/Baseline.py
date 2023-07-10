@@ -26,10 +26,10 @@ class rlc_circuit_bias:
 
 class Platoon:
     name = 'platoon'
-    max_index = 700
-    dt = 0.02
+    max_index = 300
+    dt = 0.04
     # ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
-    ref = [np.array([0.5])] * 301 + [np.array([0.5])] * 400
+    ref = [np.array([0.5])] * 301
     noise = {
         'process': {
             'type': 'box_uniform',

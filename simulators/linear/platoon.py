@@ -21,22 +21,24 @@ B = np.concatenate((np.zeros((4, 3)), np.eye(4)), axis=1).T
 x_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 # control parameters
-R = np.eye(4) * 0.00002
-Q = np.eye(7) * 0.3
+R = np.eye(4) * 5
+Q = np.eye(7) * 10000
 
 control_limit = {
     'lo': np.array([-5]),
     'up': np.array([5])
 }
 class Controller:
-    def __init__(self, dt, control_limit=None):
+    def __init__(self, dt, control_limit=None, u_i=np.zeros(4)):
         self.lqr = LQR(A, B, Q, R)
+        self.u_i = u_i
         self.set_control_limit(control_lo=control_limit['lo'], control_up=control_limit['up'])
 
     def update(self, ref: np.ndarray, feedback_value: np.ndarray, current_time) -> np.ndarray:
         self.lqr.set_reference(ref)
-        cin = self.lqr.update(feedback_value, current_time)
+        cin = self.lqr.update(feedback_value, current_time, self.u_i)
         return cin
+
     def set_control_limit(self, control_lo, control_up):
         self.control_lo = control_lo
         self.control_up = control_up
@@ -66,7 +68,8 @@ class Platoon(Simulator):
     def __init__(self, name, dt, max_index, noise=None):
         super().__init__('Platoon' + name, dt, max_index)
         self.linear(A, B)
-        controller = Controller(dt, control_limit)
+        u_i = np.array([-2, -1, 0, 1])
+        controller = Controller(dt, control_limit, u_i)
         settings = {
             'init_state': x_0,
             # 'feedback_type': 'state',
@@ -80,19 +83,19 @@ class Platoon(Simulator):
 
 if __name__ == "__main__":
     max_index = 800
-    dt = 0.02
-    ref = [np.array([1])] * 301 + [np.array([1])] * 500
+    dt = 0.04
+    ref = [np.array([0.5])] * 301 + [np.array([0.5])] * 500
     noise = {
         'process': {
             'type': 'box_uniform',
             'param': {'lo': np.ones(7) * -0.002,
                       'up': np.ones(7) * 0.002}
-        },
-        'measurement': {
-            'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.002,
-                      'up': np.ones(7) * 0.002}
         }
+        # 'measurement': {
+        #     'type': 'box_uniform',
+        #     'param': {'lo': np.ones(7) * -0.002,
+        #               'up': np.ones(7) * 0.002}
+        # }
     }
     platoon = Platoon('test', dt, max_index, noise)
     for i in range(0, max_index + 1):
@@ -103,13 +106,14 @@ if __name__ == "__main__":
     # print results
     print("#############")
     print(A)
-    print("#############")
     print(platoon.sysd.A)
     import matplotlib.pyplot as plt
 
-    t_arr = np.linspace(0, 10, max_index + 1)
+    # t_arr = np.linspace(0, 10, max_index + 1)
     ref = [x[0] for x in platoon.refs[:max_index + 1]]
     y_arr = [x[0] for x in platoon.outputs[:max_index + 1]]
 
-    plt.plot(t_arr, y_arr, t_arr, ref)
+    # plt.plot(t_arr, y_arr, t_arr, ref)
+    plt.plot(y_arr)
+    plt.plot(ref)
     plt.show()
