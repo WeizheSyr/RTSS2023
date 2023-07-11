@@ -39,10 +39,23 @@ print("each Reach", sumTimeReach / len(sys.timeReach))
 sumTimeAdjust = 0
 for i in range(len(sys.timeAdjust)):
     sumTimeAdjust = sumTimeAdjust + sys.timeAdjust[i]
-print("sumTimeReach", sumTimeAdjust)
-print("each Ajust", sumTimeAdjust / len(sys.timeAdjust))
+print("sumTimeAdjust", sumTimeAdjust)
+print("each Adjust", sumTimeAdjust / len(sys.timeAdjust))
+
+sumTimeDetect = 0
+for i in range(len(sys.timeDetect)):
+    sumTimeDetect = sumTimeDetect + sys.timeDetect[i]
+print("sumTimeDetect", sumTimeDetect)
+print("each detect", sumTimeDetect / len(sys.timeDetect))
 
 max_index = sys.i
+
+print("Quick in one time step", sumTimeQuick / max_index)
+print("Reach in one time step", sumTimeReach / max_index)
+print("Adjust in one time step", sumTimeAdjust / max_index)
+print("Detect in one time step", sumTimeDetect / max_index)
+print("max_index", max_index)
+
 # print("max_index: ", max_index)
 x_hat_arr = [x[0] for x in sys.y_hat]
 x_tilda_arr = [x[0] for x in sys.y_tilda]

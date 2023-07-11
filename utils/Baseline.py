@@ -24,12 +24,13 @@ class rlc_circuit_bias:
     # bias = np.array([0, 0, 0, 0])
     # attack = Attack('bias', bias, attack_start_index)
 
+
 class Platoon:
     name = 'platoon'
     max_index = 400
     dt = 0.04
     # ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
-    ref = [np.array([0.5])] * 401
+    ref = [np.array([1])] * 201
     noise = {
         'process': {
             'type': 'box_uniform',
@@ -43,5 +44,6 @@ class Platoon:
         }
     }
     model = Platoon('test', dt, max_index, noise)
-    attack_start_index = 400        # for time-consuming
+    # attack_start_index = 400        # for time-consuming
     # attack_start_index = 55     # for three detector
+    attack_start_index = 101

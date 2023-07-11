@@ -60,7 +60,6 @@ class TimeConsuming:
         self.timeQuick = []
         self.timeReach = []
         self.timeAdjust = []
-        self.timeDetect = []
 
         justAuth = 0
 
@@ -90,8 +89,6 @@ class TimeConsuming:
                 self.y1.append(self.y[-1])
 
             # window-based detector
-            startTimeDetect = time.time()
-
             residual = self.y_hat[self.i - 1] - self.y_tilda[self.i - 1]
             self.residuals.append(residual)
             self.detectResults.append(self.detector.detect(residual))
@@ -100,18 +97,12 @@ class TimeConsuming:
             self.taos.append(temp)
             if alarm:
                 # print("alarm at", exp.model.cur_index)
-                endTimeDetect = time.time()
-                self.timeDetect.append(endTimeDetect - startTimeDetect)
                 return
             if self.i >= 400:
                 # time
                 endTimeAll = time.time()
                 self.timeAll = endTimeAll - startTimeAll
-                endTimeDetect = time.time()
-                self.timeDetect.append(endTimeDetect - startTimeDetect)
                 return
-            endTimeDetect = time.time()
-            self.timeDetect.append(endTimeDetect - startTimeDetect)
 
             # authentication
             if len(self.authQueueInput) == self.auth.timestep:
@@ -222,16 +213,11 @@ class TimeConsuming:
                     else:
                         break
 
-                    startTimeDetect = time.time()
                     self.detectResults[-1] = self.detector.detectagain1(residual)
                     alarm = self.detector.alarmOrN()
                     if alarm:
-                        endTimeDetect = time.time()
-                        self.timeDetect.append(endTimeDetect - startTimeDetect)
                         # print("alarm at", exp.model.cur_index)
                         return
-                    endTimeDetect = time.time()
-                    self.timeDetect.append(endTimeDetect - startTimeDetect)
 
                     for k in range(5 + justAuth):
                         # bound from detector

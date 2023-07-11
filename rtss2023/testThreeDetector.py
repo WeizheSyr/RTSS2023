@@ -17,13 +17,13 @@ attack = np.zeros(50)
 attack_duration = 50
 # attack = np.zeros(attack_duration)
 for i in range(10):
-    attack[i] = 0.01 + 0.0004 * i
+    attack[i] = 0.002 * i
 for i in range(10):
-    attack[i + 9] = 0.014 + 0.0004 * i
+    attack[i + 9] = 0.015 + 0.0006 * i
 for i in range(10):
-    attack[i + 19] = 0.018 + 0.0004 * i
+    attack[i + 19] = 0.018 + 0.0006 * i
 for i in range(10):
-    attack[i + 29] = 0.022 + 0.0004 * i
+    attack[i + 29] = 0.022 + 0.0006 * i
 for i in range(10):
     attack[i + 39] = 0.03 + 0.0005 * i
 print("attack", attack)
@@ -68,29 +68,34 @@ noauth_reach = [x for x in sys.noauth_klevels]
 # print("len(noauth)", len(noauth_x_low))
 
 plt.figure()
-plt.subplot(4, 1, 1)
-plt.plot(x_low, c='red', linestyle='--', label='our x')
+grid = plt.GridSpec(5, 1)
+plt.subplot(grid[0:2, 0])
+# plt.subplot(4, 1, 1)
+plt.plot(x_low, c='red', linestyle='--', label='adaptive + authenticator')
 plt.plot(x_up, c='red', linestyle='--')
-plt.plot(x_tilda_arr, c='green', linestyle=':', label='real x')
-plt.plot(fixed_x_low, c='blue', linestyle='-.', label='fixed detector x')
+plt.plot(x_tilda_arr, c='green', linestyle=':', label='real')
+plt.plot(fixed_x_low, c='blue', linestyle='-.', label='non-adaptive + authenticator')
 plt.plot(fixed_x_up, c='blue', linestyle='-.')
-plt.plot(noauth_x_low, c='black', linestyle=':', label='no auth detector x')
+plt.plot(noauth_x_low, c='black', linestyle=':', label='non-adaptive')
 plt.plot(noauth_x_up, c='black', linestyle=':')
 plt.legend(loc=2)
 
-plt.subplot(4, 1, 2)
-plt.plot(reach, c='red', linestyle='--', label='our recoverability')
-plt.plot(fixed_reach, c='blue', linestyle='-.', label='fixed detector recoverability')
-plt.plot(noauth_reach, c='black', linestyle=':', label='no auth detector recoverability')
+# plt.subplot(4, 1, 2)
+plt.subplot(grid[2:3, 0])
+plt.plot(reach, c='red', linestyle='--', label='adaptive + authenticator')
+plt.plot(fixed_reach, c='blue', linestyle='-.', label='non-adaptive + authenticator')
+plt.plot(noauth_reach, c='black', linestyle=':', label='non-adaptive')
 plt.legend(loc=2)
 
-plt.subplot(4, 1, 3)
-plt.plot(tao_arr0, c='red', linestyle='--', label='tao')
-plt.plot(fixed_tao_arr0, c='blue', linestyle='-.', label='fixed detector tao')
+# plt.subplot(4, 1, 3)
+plt.subplot(grid[3:4, 0])
+plt.plot(tao_arr0, c='red', linestyle='--', label='adaptive + authenticator')
+plt.plot(fixed_tao_arr0, c='blue', linestyle='-.', label='non-adaptive + authenticator')
 plt.legend(loc=2)
 
-plt.subplot(4, 1, 4)
-plt.plot(tao_arr1, c='red', linestyle='--', label='tao')
-plt.plot(fixed_tao_arr1, c='blue', linestyle='-.', label='fixed detector tao')
+# plt.subplot(4, 1, 4)
+plt.subplot(grid[4:5, 0])
+plt.plot(tao_arr1, c='red', linestyle='--', label='adaptive + authenticator')
+plt.plot(fixed_tao_arr1, c='blue', linestyle='-.', label='non-adaptive + authenticator')
 plt.legend(loc=2)
 plt.show()

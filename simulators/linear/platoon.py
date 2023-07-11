@@ -68,6 +68,7 @@ class Platoon(Simulator):
     def __init__(self, name, dt, max_index, noise=None):
         super().__init__('Platoon' + name, dt, max_index)
         self.linear(A, B)
+        # u_i = np.array([-3, -2, 0, 2])
         u_i = np.array([-2, -1, 0, 1])
         controller = Controller(dt, control_limit, u_i)
         settings = {
@@ -80,11 +81,15 @@ class Platoon(Simulator):
             settings['noise'] = noise
         self.sim_init(settings)
 
+    def __del__(self):
+        super().reset()
+        print("del exp")
+
 
 if __name__ == "__main__":
     max_index = 800
     dt = 0.04
-    ref = [np.array([0.5])] * 301 + [np.array([0.5])] * 500
+    ref = [np.array([1])] * 301 + [np.array([1])] * 500
     noise = {
         'process': {
             'type': 'box_uniform',
