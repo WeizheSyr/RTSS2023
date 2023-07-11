@@ -48,7 +48,7 @@ class ThreeDetector:
         self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1, 1]))
-        self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([1, 1, 1, 1, 1, 1, 1]))
+        self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([0.5, 0.5, 0.5, 1, 1, 1, 1]))
         self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
         self.target_up = np.array([1, 1, 1, 1, 1, 1, 1])
         self.klevel = 3                                                       # keep k level recover-ability
@@ -57,6 +57,8 @@ class ThreeDetector:
         self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
 
         self.taos = []
+
+        self.alertat = 0
 
         # fixed detector
         self.fixed_detector = fixed_detector
@@ -95,18 +97,21 @@ class ThreeDetector:
             self.y.append(exp.model.cur_y)
             self.y_tilda.append(exp.model.cur_y)
             self.y_hat.append(exp.model.predict)
+            y1 = deepcopy(exp.model.cur_y)
+            self.y1.append(y1)
 
             # under attack
             if exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration - 1:
-                print("under attack")
+                # print("under attack")
                 # attack here
                 attack_step = exp.model.cur_index - exp.attack_start_index
-                exp.model.cur_y[0] = exp.model.cur_y[0] + attack[attack_step]
+                print("attack step", attack_step)
+                exp.model.cur_y[0] = exp.model.cur_y[0] - attack[attack_step]
                 # sensor measurement with attack
                 self.y_tilda[-1] = exp.model.cur_y
                 self.y_tilda1.append(self.y_tilda[-1])
                 # sensor measurement without attack
-                self.y1.append(self.y[-1])
+                # self.y1.append(self.y[-1])
 
             # window-based detector
             residual = self.y_hat[self.i - 1] - self.y_tilda[self.i - 1]
@@ -117,8 +122,10 @@ class ThreeDetector:
             self.taos.append(temp)
             if alarm:
                 print("alarm at", exp.model.cur_index)
-                return
-            if self.i >= 200:
+                if self.alertat == 0:
+                    self.alertat = exp.model.cur_index
+                # return
+            if self.i >= 130:
                 return
 
             # fixed window-based detector
@@ -129,8 +136,6 @@ class ThreeDetector:
             self.fixed_taos.append(fixed_temp)
             if fixed_alarm:
                 print("fixed detector alarm at", exp.model.cur_index)
-                return
-            if self.i >= 200:
                 return
 
             # no auth detector
@@ -160,17 +165,16 @@ class ThreeDetector:
                 self.auth.getInputs(authQueueInput1)
                 self.auth.getFeedbacks(authQueueFeed1)
                 self.auth.getAuth()
-                print('auth.x', self.auth.x)
-                print('states', exp.model.feedbacks[exp.model.cur_index - self.auth.timestep])
-                print('x_hat', self.y_hat[exp.model.cur_index - self.auth.timestep])
+                # print('auth.x', self.auth.x)
+                # print('states', exp.model.feedbacks[exp.model.cur_index - self.auth.timestep])
+                # print('x_hat', self.y_hat[exp.model.cur_index - self.auth.timestep])
                 self.auth.getAllBound()
                 self.authT.append(exp.model.cur_index - self.auth.timestep)
-                print('timestep ', self.authT[-1])
-                print('auth.bound', self.auth.bound)
+                # print('timestep ', self.authT[-1])
+                # print('auth.bound', self.auth.bound)
 
                 # from auth bound to theta
-                if self.stop_flag == 0:
-                    t = self.boundToTheta(self.auth.x, self.auth.bound, self.y_hat[exp.model.cur_index - self.auth.timestep])
+                t = self.boundToTheta(self.auth.x, self.auth.bound, self.y_hat[exp.model.cur_index - self.auth.timestep])
                 if len(self.authT) == 1:
                     self.theta[0] = t
                     # fixed detector
@@ -180,7 +184,7 @@ class ThreeDetector:
                         self.noauth_theta[0] = t
                 else:
                     t = t.reshape(1, 7, 2)
-                    print('rewrite ', self.i - 6, t)
+                    # print('rewrite ', self.i - 6, t)
                     self.theta[self.i - 7] = t
                     # fixed detector
                     self.fixed_theta[self.i - 7] = t
@@ -195,7 +199,7 @@ class ThreeDetector:
                     fixed_t = fixed_theta1.reshape(1, 7, 2)
                     # no auth detector
                     if self.stop_flag == 0:
-                        noauth_theta1 = self.boundByDetector1(self.i - 7 + k + 1, self.noauth_detector)
+                        noauth_theta1 = self.boundByDetector2(self.i - 7 + k + 1, self.noauth_detector)
                         noauth_t = noauth_theta1.reshape(1, 7, 2)
 
                     # first time authentication
@@ -216,7 +220,7 @@ class ThreeDetector:
                     # Rewrite previous theta
                     else:
                         self.theta[self.i - 7 + k + 1] = t
-                        print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
+                        # print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
                         # fixed detector
                         self.fixed_theta[self.i - 7 + k + 1] = fixed_t
 
@@ -231,10 +235,10 @@ class ThreeDetector:
                 self.theta = np.append(self.theta, t, axis=0)
                 if first == 1:
                     self.klevels.append(0)
-                print('theta ', self.theta[-1][0])
-                print('i ', self.i)
-                print('state', exp.model.feedbacks[self.i - 1][0])
-                print('hat', self.y_hat[self.i - 1][0])
+                # print('theta ', self.theta[-1][0])
+                # print('i ', self.i)
+                # print('state', exp.model.feedbacks[self.i - 1][0])
+                # print('hat', self.y_hat[self.i - 1][0])
 
                 # fixed detector
                 fixed_theta1 = self.boundByDetector1(self.i - 1, self.fixed_detector)
@@ -246,7 +250,7 @@ class ThreeDetector:
 
                 # no auth detector
                 if self.stop_flag == 0:
-                    noauth_theta1 = self.boundByDetector1(self.i - 1, self.noauth_detector)
+                    noauth_theta1 = self.boundByDetector2(self.i - 1, self.noauth_detector)
                     noauth_t = noauth_theta1
                     noauth_t = noauth_t.reshape(1, 7, 2)
                     self.noauth_theta = np.append(self.noauth_theta, noauth_t, axis=0)
@@ -258,7 +262,7 @@ class ThreeDetector:
                 thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
                 kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                 self.klevels.append(kresult)
-                print('recovery-ability: ', self.klevels[-1])
+                # print('recovery-ability: ', self.klevels[-1])
 
                 # fixed detector
                 fixed_thetaz = Zonotope.from_box(self.fixed_theta[-1, :, 0], self.fixed_theta[-1, :, 1])
@@ -266,20 +270,20 @@ class ThreeDetector:
                 self.fixed_klevels.append(fixed_kresult)
 
                 # no auth detector
-                if stop_flag == 0:
+                if self.stop_flag == 0:
                     noauth_thetaz = Zonotope.from_box(self.noauth_theta[-1, :, 0], self.noauth_theta[-1, :, 1])
                     noauth_kresult, noauth_start_step, noauth_end_step = self.noauth_reach.k_level(x_hatz, noauth_thetaz)
                     self.noauth_klevels.append(noauth_kresult)
                     # bound too large
-                    if noauth_theta1[0][0] - noauth_theta1[0][1] >= 1:
-                        stop_flag = 1
+                    if noauth_theta1[0][1] - noauth_theta1[0][0] >= 1.2:
+                        self.stop_flag = 1
 
                 while(True):
                     if abs(self.klevels[-1] - self.klevel) >= 2:
                         # adjust threshold
-                        print('adjust threshold')
+                        # print('adjust threshold')
                         delta_theta = self.reach.adjust_new(kresult, start_step, end_step, self.klevel)
-                        print("delta_theta", delta_theta)
+                        # print("delta_theta", delta_theta)
                         self.detector.adjust(delta_theta)
                         # temp = deepcopy(self.detector.tao)
                         self.taos[-1] = deepcopy(self.detector.tao)
@@ -290,7 +294,9 @@ class ThreeDetector:
                     alarm = self.detector.alarmOrN()
                     if alarm:
                         print("alarm at", exp.model.cur_index)
-                        return
+                        if self.alertat == 0:
+                            self.alertat = exp.model.cur_index
+                        # return
 
                     for k in range(5 + justAuth):
                         # bound from detector
@@ -303,16 +309,16 @@ class ThreeDetector:
                     t = theta1  # only use detector estimation
                     t = t.reshape(1, 7, 2)
                     self.theta[-1] = t
-                    print('theta ', self.theta[-1])
-                    print('i ', self.i)
-                    print('state', exp.model.feedbacks[self.i - 1])
-                    print('hat', self.y_hat[self.i - 1])
+                    # print('theta ', self.theta[-1])
+                    # print('i ', self.i)
+                    # print('state', exp.model.feedbacks[self.i - 1])
+                    # print('hat', self.y_hat[self.i - 1])
 
                     x_hatz = self.y_hat[-1]
                     thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
                     kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                     self.klevels[-1] = kresult
-                    print('recovery-ability: ', self.klevels[-1])
+                    # print('recovery-ability: ', self.klevels[-1])
 
 
 
@@ -393,3 +399,35 @@ class ThreeDetector:
                     t - 1] + self.A @ self.fixed_theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
         return theta1
 
+    def boundByDetector2(self, t, detector):
+        pOrN = [0] * detector.m
+        for i in range(detector.m):
+            pOrN[i] = self.residuals[t][i] < 0 and -1 or 1
+        l = len(self.y)
+        rsum = np.zeros(detector.m)
+        # for i in range(t):
+        if len(self.residuals) >= detector.w:
+            for i in range(detector.w):
+                rsum += abs(self.residuals[t - i])
+        else:
+            for i in range(len(self.residuals)):
+                rsum += abs(self.residuals[t - i])
+
+        temp = np.array(detector.tao) - rsum + abs(self.y_hat[t] - self.y_tilda[t])
+        temp = self.A @ temp
+
+        theta1 = np.zeros([detector.m, 2])
+
+        for i in range(len(pOrN)):
+            if pOrN[i] > 0:
+                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+                    t - 1] + self.A @ self.noauth_theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
+                theta1[i][1] = (detector.tao - rsum + self.A @ (
+                        self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.noauth_theta[t - 1, :, 1] + 0.002)[
+                    i]
+            else:
+                theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+                    t - 1] + self.A @ self.noauth_theta[t - 1, :, 0] - 0.002)[i]
+                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+                    t - 1] + self.A @ self.noauth_theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+        return theta1

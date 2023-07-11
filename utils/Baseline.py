@@ -43,4 +43,4 @@ class Platoon:
         }
     }
     model = Platoon('test', dt, max_index, noise)
-    attack_start_index = 170
+    attack_start_index = 55

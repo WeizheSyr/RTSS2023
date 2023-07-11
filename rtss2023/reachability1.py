@@ -233,8 +233,8 @@ class Reachability1:
     def adjust_new(self, k, start, end, klevel):
         delta_theta = np.zeros(self.A.shape[0])
         if k < klevel:
-            print("k, start, end", k, start, end)
-            print("self.result", self.result)
+            # print("k, start, end", k, start, end)
+            # print("self.result", self.result)
             # decrease theta
             if end == -1 and start == -1:
                 # not intersection at all
@@ -247,7 +247,7 @@ class Reachability1:
                         if self.D_low[i][j] >= self.D_up[i][j]:
                             isempty = i
                             delta_theta[j] = -0.1
-                            print("D become empty before intersect")
+                            # print("D become empty before intersect")
                     if isempty != -1:
                         break
 
@@ -257,7 +257,7 @@ class Reachability1:
                         if self.D_low[self.max_step - 1][j] >= self.E_up[self.max_step - 1][j] or \
                                 self.D_up[self.max_step - 1][j] <= self.E_low[self.max_step -1][j]:
                             delta_theta[j] = -0.1
-                            print("D does not become empty before max_step")
+                            # print("D does not become empty before max_step")
 
             elif end == self.max_step - 1 and start > -1:
                 # intersect and D does not become empty before max_step
@@ -265,7 +265,7 @@ class Reachability1:
                     if self.D_low[start - 1][j] >= self.E_up[start - 1][j] or \
                             self.D_up[start - 1][j] <= self.E_low[start - 1][j]:
                         delta_theta[j] = -0.1
-                        print("intersect and D does not become empty before max_step")
+                        # print("intersect and D does not become empty before max_step")
             elif end > -1 and start > -1:
                 # intersect and D become empty before max_step
                 # search for the empty dimension
@@ -274,13 +274,13 @@ class Reachability1:
                     if self.D_low[end + 1][j] >= self.D_up[end + 1][j]:
                         delta_theta[j] = -0.1
                         flag_delta = 1
-                        print("# intersect and D become empty before max_step")
+                        # print("# intersect and D become empty before max_step")
                 if flag_delta == 0:
-                    print("unexpect situation")
+                    # print("unexpect situation")
                     for j in range(self.A.shape[0]):
                         delta_theta[j] = -0.1
-            else:
-                print("unexpect situation")
+            # else:
+                # print("unexpect situation")
 
         else:
             # increase theta

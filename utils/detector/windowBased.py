@@ -51,5 +51,5 @@ class window:
     def adjust(self, delta_theta):
         for i in range(self.m):
             self.tao[i] = self.tao[i] + self.tao[i] * delta_theta[i]
-        print("new tao", self.tao)
+        # print("new tao", self.tao)
 
