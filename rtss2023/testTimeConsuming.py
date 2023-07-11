@@ -1,8 +1,9 @@
-from systemALLDim import SystemALLDim
+from timeConsuming import TimeConsuming
 from utils.Baseline import Platoon
 from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 tao = np.ones(7) * 0.05
 # tao = [0.5] * 7
@@ -10,11 +11,36 @@ detector = window(tao, 7, 10)
 exp = Platoon
 attack = [np.array([0.00])] * 30
 attack_duration = 30
-# attack = np.zeros(attack_duration)
-for i in range(attack_duration):
-    attack[i] = 0.005 * i
 
-sys = SystemALLDim(detector=detector, exp=exp, attack=attack, attack_duration=attack_duration)
+sys = TimeConsuming(detector=detector, exp=exp, attack=attack, attack_duration=attack_duration)
+
+# time
+sumTimeAll = sys.timeAll
+print("sumTimeAll", sumTimeAll)
+
+sumTimeAuth = 0
+for i in range(len(sys.timeAuth)):
+    sumTimeAuth = sumTimeAuth + sys.timeAuth[i]
+print("sumTimeAuth", sumTimeAuth)
+print("each Auth", sumTimeAuth / len(sys.timeAuth))
+
+sumTimeQuick = 0
+for i in range(len(sys.timeQuick)):
+    sumTimeQuick = sumTimeQuick + sys.timeQuick[i]
+print("sumTimeQuick", sumTimeQuick)
+print("each Quick", sumTimeQuick / len(sys.timeQuick))
+
+sumTimeReach = 0
+for i in range(len(sys.timeReach)):
+    sumTimeReach = sumTimeReach + sys.timeReach[i]
+print("sumTimeReach", sumTimeReach)
+print("each Reach", sumTimeReach / len(sys.timeReach))
+
+sumTimeAdjust = 0
+for i in range(len(sys.timeAdjust)):
+    sumTimeAdjust = sumTimeAdjust + sys.timeAdjust[i]
+print("sumTimeReach", sumTimeAdjust)
+print("each Ajust", sumTimeAdjust / len(sys.timeAdjust))
 
 max_index = sys.i
 # print("max_index: ", max_index)
@@ -49,3 +75,6 @@ plt.plot(tao_arr0, c='blue', linestyle=':', label='tao')
 plt.subplot(2, 2, 4)
 plt.plot(tao_arr1, c='blue', linestyle=':', label='tao')
 plt.show()
+
+
+
