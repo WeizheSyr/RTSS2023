@@ -1,5 +1,7 @@
 import numpy as np
 from utils.formal.zonotope import Zonotope
+import cvxpy as cp
+import time
 
 class Reachability1:
     def __init__(self, A, B, p: Zonotope, U: Zonotope, target: Zonotope, target_low, target_up, max_step=20, c=None):
@@ -90,18 +92,60 @@ class Reachability1:
     def D_bound(self):
         D_low = []
         D_up = []
-        length = []
         for i in range(self.max_step):
             second = self.D2[i] + self.D3[i] + self.D4[i]
             first = self.D1[i]
             low, up = self.minkowski_dif(first, second)
             D_low.append(low)
             D_up.append(up)
-            len = []
-            for j in range(self.A.shape[0]):
-                len.append(up[j] - low[j])
-            length.append(len)
         return D_low, D_up
+
+    def D_bound_box(self):
+        D_boxes = []
+        for i in range(self.max_step):
+            second = self.D2[i] + self.D3[i] + self.D4[i]
+            first = self.D1[i]
+            low, up = self.minkowski_dif(first, second)
+            D_boxes.append(Zonotope.from_box(np.array(low), np.array(up)))
+        return D_boxes
+
+    def check_opt_intersect(self, D_boxes):
+        results = []
+        for i in range(self.max_step):
+            results.append(self.opt_intersect(self.E[i], D_boxes[i]))
+        return results
+
+    def opt_intersect(self, first: Zonotope, second: Zonotope):
+        alpha = cp.Variable([first.g.shape[1]], name="alpha")
+        beta = cp.Variable([second.g.shape[1]], name="beta")
+        x = cp.Variable()
+
+        obj = x
+
+        constraints = [
+            (alpha[k] <= 1) for k in range(first.g.shape[1])
+        ]
+        constraints += [
+            (alpha[k] >= -1) for k in range(first.g.shape[1])
+        ]
+        constraints += [
+            (beta[k] <= -1) for k in range(second.g.shape[1])
+        ]
+        constraints += [
+            (beta[k] >= -1) for k in range(second.g.shape[1])
+        ]
+        constraints += [
+            first.c + first.g @ alpha == second.c + second.g @ beta
+        ]
+        constraints += [
+            x == 0
+        ]
+        problem = cp.Problem(cp.Minimize(obj), constraints)
+        result = problem.solve(solver=cp.SCIPY)
+        if np.isnan(result):
+            return False
+        else:
+            return True
 
     def minkowski_dif(self, first: Zonotope, second: Zonotope):
         D_low = []
@@ -180,6 +224,16 @@ class Reachability1:
 
     def k_level(self, x_hat: Zonotope, theta: Zonotope):
         self.recoverability(x_hat, theta)
+
+        # startTimeAll = time.time()
+        # opt intersection
+        D_boxes = self.D_bound_box()
+        opt_results = self.check_opt_intersect(D_boxes)
+        # endTimeAll = time.time()
+        # print("time", endTimeAll - startTimeAll)
+        print("opt_results", opt_results)
+
+        print("results", self.result)
         k1 = 0
         start1 = -1
         end1 = -1
