@@ -90,6 +90,7 @@ class Reachability1:
         return D2, D3
 
     def D_bound(self):
+        start = time.time()
         D_low = []
         D_up = []
         for i in range(self.max_step):
@@ -98,6 +99,8 @@ class Reachability1:
             low, up = self.minkowski_dif(first, second)
             D_low.append(low)
             D_up.append(up)
+        end = time.time()
+        print("D_bound", end - start)
         return D_low, D_up
 
     def D_bound_box(self):
@@ -112,7 +115,11 @@ class Reachability1:
     def check_opt_intersect(self, D_boxes):
         results = []
         for i in range(self.max_step):
+            startTime = time.time()
             results.append(self.opt_intersect(self.E[i], D_boxes[i]))
+            endTime = time.time()
+            print("ith: ", i)
+            print("time", endTime - startTime)
         return results
 
     def opt_intersect(self, first: Zonotope, second: Zonotope):
@@ -225,12 +232,16 @@ class Reachability1:
     def k_level(self, x_hat: Zonotope, theta: Zonotope):
         self.recoverability(x_hat, theta)
 
-        # startTimeAll = time.time()
+        startTimeBox = time.time()
         # opt intersection
         D_boxes = self.D_bound_box()
+        endTimeBox = time.time()
+        print("timeBox", endTimeBox - startTimeBox)
+
+        startTimeOpt = time.time()
         opt_results = self.check_opt_intersect(D_boxes)
-        # endTimeAll = time.time()
-        # print("time", endTimeAll - startTimeAll)
+        endTimeOpt = time.time()
+        print("timeSumOpt", endTimeOpt - startTimeOpt)
         print("opt_results", opt_results)
 
         print("results", self.result)
