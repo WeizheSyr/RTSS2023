@@ -111,14 +111,14 @@ class FPEvaluation:
             temp = deepcopy(self.detector.tao)
             self.taos.append(temp)
             if alarm:
-                print("alarm at", exp.model.cur_index)
+                # print("alarm at", exp.model.cur_index)
                 if self.alertat == 0:
                     self.alertat = exp.model.cur_index
                 if self.alertat != 0 and self.fixedAlert != 0:
                     exp.model.reset(True)
                     del exp
                     return
-            if self.i >= 101:
+            if self.i >= 51:
                 exp.model.reset(True)
                 del exp
                 return
@@ -256,7 +256,7 @@ class FPEvaluation:
                     self.detectResults[-1] = self.detector.detectagain1(residual)
                     alarm = self.detector.alarmOrN()
                     if alarm:
-                        print("alarm at", exp.model.cur_index)
+                        # print("alarm at", exp.model.cur_index)
                         if self.alertat == 0:
                             self.alertat = exp.model.cur_index
                         if self.alertat != 0 and self.fixedAlert != 0:

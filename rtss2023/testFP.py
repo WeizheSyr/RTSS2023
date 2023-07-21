@@ -26,14 +26,14 @@ FP_fixed = 0
 largerThanK = 0
 totalLength = 0
 
-for i in range(100):
+for i in range(50):
     # rseed = np.uint32(int(time.time()))
     # print(rseed)
     # np.random.seed(rseed)
     print("new")
     tao = np.ones(7) * 0.1
     detector = window(tao, 7, 10)
-    fixed_tao = np.ones(7) * 0.1
+    fixed_tao = np.ones(7) * 0.014
     fixed_detector = window(fixed_tao, 7, 10)
     exp = Platoon
     attack = np.zeros(50)
@@ -48,9 +48,9 @@ for i in range(100):
 
     print("totalLength", totalLength)
     print("k")
-    if len(sys.klevels) < 100:
+    if len(sys.klevels) < 50:
         FP_our = FP_our + 1
-    if len(sys.fixed_klevels) < 100:
+    if len(sys.fixed_klevels) < 50:
         FP_fixed = FP_fixed + 1
 
     del sys
