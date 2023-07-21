@@ -78,7 +78,7 @@ class Zonotope:
         A_T_l = self.g.T @ l
         rho_A_T_l = np.linalg.norm(A_T_l, ord=1)
         rho_c = l @ self.c
-        if direction==1:
+        if direction == 1:
             return rho_c + rho_A_T_l
         else:
             return rho_c - rho_A_T_l
