@@ -77,6 +77,7 @@ class LaneKeeping(Simulator):
             settings['noise'] = noise
         self.sim_init(settings)
 
+
 if __name__ == "__main__":
     max_index = 1000
     dt = 0.01
@@ -88,42 +89,11 @@ if __name__ == "__main__":
         }
     }
     lk = LaneKeeping('test', dt, max_index, noise)
-
-    print('A')
-    print(A)
-    print('B')
-    print(B)
-
-    # window based detector
-    w = 50
-    r = 0
-    queue = []
-    tao = 3
-    start_point = 800
-    delt_x = 0.001
-
     for i in range(0, max_index + 1):
         assert lk.cur_index == i
         lk.update_current_ref(ref[i])
-        print("###########")
-        print(lk.inputs[i])
-
         # attack here
-        if i > start_point:
-            lk.cur_feedback[0] += delt_x
-
-        # detect
-        # if len(queue) == w:
-        #     queue.pop()
-        # if i != 0:
-        #     # print(abs(lk.feedbacks[0] - lk.predict[i][0]))
-        #     queue.insert(0, abs(lk.feedbacks[0] - lk.predict[i][0]))
-        #     s = sum(queue)
-        #     # if s > tao:
-        #     #     break
-
         lk.evolve()
-    # print(lk.outputs[0][0])
     # print results
     import matplotlib.pyplot as plt
 
@@ -133,29 +103,3 @@ if __name__ == "__main__":
 
     plt.plot(t_arr, y_arr, t_arr, ref)
     plt.show()
-
-# if __name__ == "__main__":
-#     max_index = 1000
-#     dt = 0.01
-#     ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
-#     noise = {
-#         'process': {
-#             'type': 'white',
-#             'param': {'C': np.eye(4) * 0.001}
-#         }
-#     }
-#     lk = LaneKeeping('test', dt, max_index, noise)
-#     for i in range(0, max_index + 1):
-#         assert lk.cur_index == i
-#         lk.update_current_ref(ref[i])
-#         # attack here
-#         lk.evolve()
-#     # print results
-#     import matplotlib.pyplot as plt
-#
-#     t_arr = np.linspace(0, 10, max_index + 1)
-#     ref = [x[0] for x in lk.refs[:max_index + 1]]
-#     y_arr = [x[0] for x in lk.outputs[:max_index + 1]]
-#
-#     plt.plot(t_arr, y_arr, t_arr, ref)
-#     plt.show()

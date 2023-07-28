@@ -96,8 +96,8 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     t_arr = np.linspace(0, 10, max_index + 1)
-    ref = [x[0] for x in f16.refs[:max_index + 1]]
-    y_arr = [x[0] for x in f16.outputs[:max_index + 1]]
+    ref = [x[2] for x in f16.states[:max_index + 1]]
+    y_arr = [x[2] for x in f16.states[:max_index + 1]]
 
     plt.plot(t_arr, y_arr, t_arr, ref)
     plt.show()

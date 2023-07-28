@@ -41,7 +41,7 @@ class Reachability1:
     def inv_A_d(self):
         inv_A_d = []
         for i in range(self.max_step):
-            inv_A_d.append(np.linalg.inv(self.A_i[i]))
+            inv_A_d.append(np.linalg.pinv(self.A_i[i]))
         return inv_A_d
 
     def reach_E(self):
@@ -109,10 +109,6 @@ class Reachability1:
             second = self.D2[i] + self.D3[i] + self.D4[i]
             first = self.D1[i]
             low, up = self.minkowski_dif(first, second)
-            for j in range(self.A.shape[0]):
-                if low[j] >= up[j]:
-                    print("empty set at ", i)
-                    continue
             D_boxes.append(Zonotope.from_box(np.array(low), np.array(up)))
         return D_boxes
 
@@ -140,7 +136,7 @@ class Reachability1:
             (alpha[k] >= -1) for k in range(first.g.shape[1])
         ]
         constraints += [
-            (beta[k] <= 1) for k in range(second.g.shape[1])
+            (beta[k] <= -1) for k in range(second.g.shape[1])
         ]
         constraints += [
             (beta[k] >= -1) for k in range(second.g.shape[1])
@@ -236,17 +232,17 @@ class Reachability1:
     def k_level(self, x_hat: Zonotope, theta: Zonotope):
         self.recoverability(x_hat, theta)
 
-        startTimeBox = time.time()
-        # opt intersection
-        D_boxes = self.D_bound_box()
-        endTimeBox = time.time()
-        print("timeBox", endTimeBox - startTimeBox)
-
-        startTimeOpt = time.time()
-        opt_results = self.check_opt_intersect(D_boxes)
-        endTimeOpt = time.time()
-        print("timeSumOpt", endTimeOpt - startTimeOpt)
-        print("opt_results", opt_results)
+        # startTimeBox = time.time()
+        # # opt intersection
+        # D_boxes = self.D_bound_box()
+        # endTimeBox = time.time()
+        # print("timeBox", endTimeBox - startTimeBox)
+        #
+        # startTimeOpt = time.time()
+        # opt_results = self.check_opt_intersect(D_boxes)
+        # endTimeOpt = time.time()
+        # print("timeSumOpt", endTimeOpt - startTimeOpt)
+        # print("opt_results", opt_results)
 
         print("results", self.result)
         k1 = 0

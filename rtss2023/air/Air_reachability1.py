@@ -217,8 +217,8 @@ class Reachability1:
         self.D_low, self.D_up = self.D_bound()
         for i in range(self.max_step):
             inter, dis = self.check_intersection(i)
-            # print(i)
-            # print("inter", inter)
+            print(i)
+            print("inter", inter)
             intersection.append(inter)
             distance.append(dis)
 
@@ -236,17 +236,17 @@ class Reachability1:
     def k_level(self, x_hat: Zonotope, theta: Zonotope):
         self.recoverability(x_hat, theta)
 
-        startTimeBox = time.time()
-        # opt intersection
-        D_boxes = self.D_bound_box()
-        endTimeBox = time.time()
-        print("timeBox", endTimeBox - startTimeBox)
-
-        startTimeOpt = time.time()
-        opt_results = self.check_opt_intersect(D_boxes)
-        endTimeOpt = time.time()
-        print("timeSumOpt", endTimeOpt - startTimeOpt)
-        print("opt_results", opt_results)
+        # startTimeBox = time.time()
+        # # opt intersection
+        # D_boxes = self.D_bound_box()
+        # endTimeBox = time.time()
+        # print("timeBox", endTimeBox - startTimeBox)
+        #
+        # startTimeOpt = time.time()
+        # opt_results = self.check_opt_intersect(D_boxes)
+        # endTimeOpt = time.time()
+        # print("timeSumOpt", endTimeOpt - startTimeOpt)
+        # print("opt_results", opt_results)
 
         print("results", self.result)
         k1 = 0
@@ -345,16 +345,18 @@ class Reachability1:
                         flag_delta = 1
                         # print("# intersect and D become empty before max_step")
                 if flag_delta == 0:
+                    delta_theta[2] = -0.1
                     # print("unexpect situation")
-                    for j in range(self.A.shape[0]):
-                        delta_theta[j] = -0.1
-            # else:
-                # print("unexpect situation")
+                    # for j in range(self.A.shape[0]):
+                    #     delta_theta[j] = -0.1
+            else:
+                print("unexpect situation")
 
         else:
             # increase theta
-            for j in range(self.A.shape[0]):
-                delta_theta[j] = 0.1
+            delta_theta[2] = 0.1
+            # for j in range(self.A.shape[0]):
+            #     delta_theta[j] = 0.1
 
         self.delta_theta = delta_theta
         return delta_theta
@@ -377,14 +379,14 @@ class Reachability1:
                                 emptydim[j] = 1
                 for j in range(self.A.shape[0]):
                     if emptydim[j] == 1:
-                        delta_theta[j] = -0.2
+                        delta_theta[j] = -0.1
                     else:
                         delta_theta[j] = 0
 
                 if isempty == 0:
                     for j in range(self.A.shape[0]):
                         if self.D_low[i][j] >= self.E_up[i][j] or self.D_low[i][j] >= self.E_up[i][j]:
-                            delta_theta[j] = -0.2
+                            delta_theta[j] = -0.1
 
                 flag = 0
                 for j in range(self.A.shape[0]):
@@ -392,7 +394,7 @@ class Reachability1:
                         flag = 1
                 if flag == 0:
                     for j in range(self.A.shape[0]):
-                        delta_theta[j] = -0.2
+                        delta_theta[j] = -0.1
 
                 return delta_theta
             else:

@@ -61,7 +61,7 @@ class RlcCircuit(Simulator):
 if __name__ == "__main__":
     max_index = 500
     dt = 0.02
-    ref = [np.array([2])] * 201 + [np.array([3])] * 200 + [np.array([2])] * 100
+    ref = [np.array([2])] * 201 + [np.array([2])] * 200 + [np.array([2])] * 100
     noise = {
         'process': {
             'type': 'white',
@@ -74,12 +74,15 @@ if __name__ == "__main__":
         rlc_circuit.update_current_ref(ref[i])
         # attack here
         rlc_circuit.evolve()
+    print(A)
+    print(rlc_circuit.sysd.A)
+    print(rlc_circuit.sysd.B)
     # print results
     import matplotlib.pyplot as plt
 
     t_arr = np.linspace(0, 10, max_index + 1)
-    ref = [x[0] for x in rlc_circuit.refs[:max_index + 1]]
-    y_arr = [x[0] for x in rlc_circuit.outputs[:max_index + 1]]
+    ref = [x[1] for x in rlc_circuit.states[:max_index + 1]]
+    y_arr = [x[0] for x in rlc_circuit.states[:max_index + 1]]
 
     plt.plot(t_arr, y_arr, t_arr, ref)
     plt.show()

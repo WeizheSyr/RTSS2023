@@ -94,7 +94,7 @@ class Boeing(Simulator):
 if __name__ == "__main__":
     max_index = 2000
     dt = 0.02
-    ref = [np.array([1])] * (max_index + 1)
+    ref = [np.array([15])] * (max_index + 1)
     noise = {
         'process': {
             'type': 'white',

@@ -20,6 +20,9 @@ class window:
         self.queue[dim].insert(0, abs(residual))
 
         self.rsum[dim] = sum(self.queue[dim])
+        print("dim, ", dim)
+        print("residualsum", sum(self.queue[dim]))
+
         if sum(self.queue[dim]) > self.tao[dim]:
             return True    # alert
         else:
