@@ -57,6 +57,9 @@ class SystemALLDim:
 
         justAuth = 0
 
+        print(self.A)
+        print(self.B)
+
         while True:
             first = 0
             exp.model.update_current_ref(exp.ref[self.i])

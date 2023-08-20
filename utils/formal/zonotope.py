@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from utils.formal.half_space import HalfSpace
 from utils.formal.strip import Strip
 from utils.formal.hyperplane import Hyperplane
+import cvxpy as cp
 
 
 class Zonotope:
@@ -225,6 +226,43 @@ class Zonotope:
         g = np.diag(g_range)
         return cls(c, g)
 
+    def order_reduction(self, k):
+        N = self.g.shape[1]
+        new = self
+        for i in range(N - k):
+            new = new.one_dimension_reduction()
+        return new
+
+    def one_dimension_reduction(self):
+        N = self.g.shape[1]
+
+        i = cp.Variable(integer=True, name="i")
+        j = cp.Variable(integer=True, name="j")
+
+        constraints = [i <= N - 1]
+        constraints += [i >= 0]
+        constraints += [j <= N - 1]
+        constraints += [j >= 0]
+        constraints += [i - j >= 1]
+        print(self.g[:,1])
+        obj = cp.norm2(self.g[:, i.value]) @ cp.norm2(self.g[:, j.value] - (self.g[:, i.value] / cp.norm2(self.g[:, i.value])) @ self.g[:, j.value].T @ (self.g[:, i.value] / cp.norm2(self.g[:, i.value])))
+        problem = cp.Problem(cp.Minimize(obj), constraints)
+        problem.solve()
+
+        G_prime = np.delete(self.g, i.value, axis=1)
+        G_prime = np.delete(G_prime, j.value, axis=1)
+        # a + b
+        a = np.linalg.norm((self.g[i.value] + self.g[j.value]).T @ G_prime, ord=2)
+        # a - b
+        b = np.linalg.norm((self.g[i.value] - self.g[j.value]).T @ G_prime, ord=2)
+
+        if a >= b:
+            G_prime = np.append(G_prime, a + b, axis=1)
+        else:
+            G_prime = np.append(G_prime, a - b, axis=1)
+
+        new = Zonotope(c=self.c, g=G_prime)
+        return new
 
 if __name__ == '__main__':
     c1 = np.array([1, 2, 3], dtype=float)

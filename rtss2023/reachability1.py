@@ -1,6 +1,8 @@
+import getopt
+
 import numpy as np
 from utils.formal.zonotope import Zonotope
-import cvxpy as cp
+
 import time
 
 class Reachability1:
@@ -426,3 +428,9 @@ class Reachability1:
 
         self.delta_theta = delta_theta
         return delta_theta
+
+
+    # A is a zonotope with generator
+    # B is a box
+    def attemp_reach(self, A: Zonotope, B):
+        p = A.g.shape[1]
