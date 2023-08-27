@@ -236,33 +236,30 @@ class Zonotope:
     def one_dimension_reduction(self):
         N = self.g.shape[1]
 
-        i = cp.Variable(integer=True, name="i")
-        j = cp.Variable(integer=True, name="j")
+        temp = np.zeros(N, N)
+        for i in range(N):
+            for j in range(N):
+                if i == j:
+                    temp[i][j] = np.inf
+                    continue
+                t = np.linalg.norm(self.g[:, i]) @ np.linalg.norm(self.g[:, j] - (self.g[:, i] / np.linalg.norm(self.g[:, i])) @ self.g[:, j].T @ (self.g[:, i] / np.linalg.norm(self.g[:, i])))
+                temp[i][j] = t
+        obj = np.argmin(temp)
 
-        constraints = [i <= N - 1]
-        constraints += [i >= 0]
-        constraints += [j <= N - 1]
-        constraints += [j >= 0]
-        constraints += [i - j >= 1]
-        print(self.g[:,1])
-        obj = cp.norm2(self.g[:, i.value]) @ cp.norm2(self.g[:, j.value] - (self.g[:, i.value] / cp.norm2(self.g[:, i.value])) @ self.g[:, j.value].T @ (self.g[:, i.value] / cp.norm2(self.g[:, i.value])))
-        problem = cp.Problem(cp.Minimize(obj), constraints)
-        problem.solve()
-
-        G_prime = np.delete(self.g, i.value, axis=1)
-        G_prime = np.delete(G_prime, j.value, axis=1)
-        # a + b
-        a = np.linalg.norm((self.g[i.value] + self.g[j.value]).T @ G_prime, ord=2)
-        # a - b
-        b = np.linalg.norm((self.g[i.value] - self.g[j.value]).T @ G_prime, ord=2)
-
-        if a >= b:
+        G_prime = np.delete(self.g, obj[0], axis=1)
+        G_prime = np.delete(G_prime, obj[1], axis=1)
+        # g_i + g_j
+        a = np.linalg.norm((self.g[obj[0]] + self.g[obj[1]]).T @ G_prime, ord=2)
+        # g_i - g_j
+        b = np.linalg.norm((self.g[obj[0]] - self.g[obj[1]]).T @ G_prime, ord=2)
+        if a > b:
             G_prime = np.append(G_prime, a + b, axis=1)
         else:
             G_prime = np.append(G_prime, a - b, axis=1)
 
         new = Zonotope(c=self.c, g=G_prime)
         return new
+
 
 if __name__ == '__main__':
     c1 = np.array([1, 2, 3], dtype=float)
