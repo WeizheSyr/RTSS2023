@@ -244,11 +244,11 @@ class Reachability1:
         endTimeBox = time.time()
         print("timeBox", endTimeBox - startTimeBox)
 
-        startTimeOpt = time.time()
-        opt_results = self.check_opt_intersect(D_boxes)
-        endTimeOpt = time.time()
-        print("timeSumOpt", endTimeOpt - startTimeOpt)
-        print("opt_results", opt_results)
+        # startTimeOpt = time.time()
+        # opt_results = self.check_opt_intersect(D_boxes)
+        # endTimeOpt = time.time()
+        # print("timeSumOpt", endTimeOpt - startTimeOpt)
+        # print("opt_results", opt_results)
 
         print("results", self.result)
         k1 = 0

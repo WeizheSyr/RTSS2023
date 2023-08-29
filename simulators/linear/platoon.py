@@ -110,7 +110,6 @@ if __name__ == "__main__":
         platoon.evolve()
     # print results
     print("#############")
-    print(A)
     print(platoon.sysd.A)
     import matplotlib.pyplot as plt
 

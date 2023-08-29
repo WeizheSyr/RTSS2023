@@ -186,6 +186,9 @@ class SystemALLDim:
                 #         if self.theta[-1][i][0] >= self.theta[-1][i][1]:
                 #             print("violate")
 
+                if self.i >= 58:
+                    print("self.i == 58")
+
                 # reachability anaylze
                 x_hatz = self.y_hat[-1]
                 thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
@@ -199,8 +202,6 @@ class SystemALLDim:
                 #     self.detector.adjust(delta_theta)
                 #     # goto .begin
 
-
-
                 while(True):
                     # if justAuth == 1:
                     #     justAuth = 0
@@ -213,6 +214,7 @@ class SystemALLDim:
                         self.detector.adjust(delta_theta)
                         # temp = deepcopy(self.detector.tao)
                         self.taos[-1] = deepcopy(self.detector.tao)
+                        print("self.taos", self.taos[-1])
                     else:
                         break
 
