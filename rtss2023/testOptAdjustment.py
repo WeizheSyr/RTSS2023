@@ -17,10 +17,12 @@ for i in range(20):
     if i == 0:
         E.append(A_i_B_U[0])
     else:
-        # E.append(E[-1] + A_i_B_U[i])
-        E.append(A_i_B_U[0])
+        E.append(E[-1] + A_i_B_U[i])
+        # E.append(A_i_B_U[0])
 
 temp = E[9].order_reduction(4)
+print(temp)
+exit()
 
 d = 10
 # authTimestep + self.auth.timestep

@@ -233,32 +233,48 @@ class Zonotope:
             new = new.one_dimension_reduction()
         return new
 
+    def find_min_idx(self, x):
+        nrow = x.shape[0]
+        ncol = x.shape[1]
+        minx = np.min(x)
+        for i in range(nrow):
+            for j in range(ncol):
+                if x[i][j] == minx:
+                    return i, j
+
     def one_dimension_reduction(self):
         print(self.g.shape[1])
         N = self.g.shape[1]
 
-        temp = np.zeros(N, N)
+        temp = np.zeros([N, N])
         for i in range(N):
             for j in range(N):
                 if i == j:
                     temp[i][j] = np.inf
                     continue
-                t = np.linalg.norm(self.g[:, i]) @ np.linalg.norm(self.g[:, j] - (self.g[:, i] / np.linalg.norm(self.g[:, i])) @ self.g[:, j].T @ (self.g[:, i] / np.linalg.norm(self.g[:, i])))
+                # g_i_norm2
+                t1 = np.linalg.norm(self.g[:, i])
+                # g_i^
+                t2 = self.g[:, i] / np.linalg.norm(self.g[:, i])
+                t = t1 * np.linalg.norm(t2.reshape(-1, 1) @ self.g[:, j].reshape(-1, 1).T @ t2.reshape(-1, 1))
                 temp[i][j] = t
-        obj = np.argmin(temp)
+        o1, o2 = self.find_min_idx(temp)
+        obj = [o1, o2]
 
         G_prime = np.delete(self.g, obj[0], axis=1)
+        if obj[0] < obj[1]:
+            obj[1] = obj[1] - 1
         G_prime = np.delete(G_prime, obj[1], axis=1)
         # g_i + g_j
-        a = np.linalg.norm((self.g[obj[0]] + self.g[obj[1]]).T @ G_prime, ord=2)
+        a = np.linalg.norm((self.g[:, obj[0]].reshape(-1, 1) + self.g[:, obj[1]].reshape(-1, 1)).T @ G_prime, ord=2)
         # g_i - g_j
-        b = np.linalg.norm((self.g[obj[0]] - self.g[obj[1]]).T @ G_prime, ord=2)
+        b = np.linalg.norm((self.g[:, obj[0]].reshape(-1, 1) - self.g[:, obj[1]].reshape(-1, 1)).T @ G_prime, ord=2)
         if a > b:
-            G_prime = np.append(G_prime, a + b, axis=1)
+            newg = np.append(G_prime, self.g[:, obj[0]].reshape(-1, 1) + self.g[:, obj[1]].reshape(-1, 1), axis=1)
         else:
-            G_prime = np.append(G_prime, a - b, axis=1)
+            newg = np.append(G_prime, self.g[:, obj[0]].reshape(-1, 1) - self.g[:, obj[1]].reshape(-1, 1), axis=1)
 
-        new = Zonotope(c=self.c, g=G_prime)
+        new = Zonotope(c=self.c, g=newg)
         return new
 
 
