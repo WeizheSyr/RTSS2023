@@ -243,7 +243,7 @@ class Zonotope:
                     return i, j
 
     def one_dimension_reduction(self):
-        print(self.g.shape[1])
+        # print(self.g.shape[1])
         N = self.g.shape[1]
 
         temp = np.zeros([N, N])

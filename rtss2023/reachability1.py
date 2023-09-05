@@ -222,7 +222,7 @@ class Reachability1:
             # print(i)
             # print("inter", inter)
             intersection.append(inter)
-            distance.append(dis)
+            # distance.append(dis)
 
         # check recoverability
         for i in range(self.max_step):

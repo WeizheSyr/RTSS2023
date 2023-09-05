@@ -20,9 +20,9 @@ for i in range(20):
         E.append(E[-1] + A_i_B_U[i])
         # E.append(A_i_B_U[0])
 
-temp = E[9].order_reduction(4)
-print(temp)
-exit()
+temp = E[9].order_reduction(7)
+# print(temp)
+# exit()
 
 d = 10
 # authTimestep + self.auth.timestep

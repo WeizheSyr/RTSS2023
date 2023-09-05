@@ -186,7 +186,7 @@ class SystemALLDim:
                 #         if self.theta[-1][i][0] >= self.theta[-1][i][1]:
                 #             print("violate")
 
-                if self.i >= 58:
+                if self.i >= 56:
                     print("self.i == 58")
 
                 # reachability anaylze
