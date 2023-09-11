@@ -63,21 +63,28 @@ constraints += [
 problem = cp.Problem(cp.Minimize(0), constraints)
 result = problem.solve()
 print(beta.value)
-print("result point")
-print(temp.g @ beta.value)
+# print("result point")
+# print(temp.g @ beta.value)
 
-E_inv = np.linalg.pinv(temp.g)
-print("#########################")
-# print(E_inv)
+E_inv = np.linalg.inv(temp.g)
+# print(E_inv @ temp.g @ beta.value)
 t = E_inv @ temp.g
-print("***************************")
-# print(t)
 print("up")
 print(E_inv @ D_up)
-print("low")
+print("low"),
 print(E_inv @ D_low)
-# print(temp.g @ E_inv)
-print(temp.g @ E_inv @ D_low)
+D_1 = D_up
+D_1[1] = 0
+print(E_inv @ D_1)
+D_2 = D_up
+D_2[2] = D_low[2]
+D_2[3] = D_low[3]
+print(E_inv @ D_2)
+
+D_3 = (D_up + D_low)/2
+print(E_inv @ D_3)
+
+
 # print(temp.g @ E_inv @ D_up)
 # print(temp.g @ E_inv @ D_low)
 
@@ -147,19 +154,19 @@ print(temp.g @ E_inv @ D_low)
 #             # flags += 1
 
 
-t = np.ones(dim).reshape(-1, 1).T
-G = np.append(temp.g, np.eye(dim), axis=0)
-lo = np.append(D_low, -np.ones(dim))
-up = np.append(D_up, np.ones(dim))
-E_inv = np.linalg.pinv(G)
-k = E_inv @ G
-print(k)
-print("lo")
-lo = lo.reshape(-1, 1)
-up = up.reshape(-1, 1)
-print(E_inv @ lo)
-print("up")
-print(E_inv @ up)
+# t = np.ones(dim).reshape(-1, 1).T
+# G = np.append(temp.g, np.eye(dim), axis=0)
+# lo = np.append(D_low, -np.ones(dim))
+# up = np.append(D_up, np.ones(dim))
+# E_inv = np.linalg.pinv(G)
+# k = E_inv @ G
+# print(k)
+# print("lo")
+# lo = lo.reshape(-1, 1)
+# up = up.reshape(-1, 1)
+# print(E_inv @ lo)
+# print("up")
+# print(E_inv @ up)
 
 
 # dirct = (D_up + D_low) / 2
