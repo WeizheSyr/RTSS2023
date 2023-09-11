@@ -4,6 +4,8 @@ import cvxpy as cp
 from utils.Baseline import Platoon
 import time
 
+np.set_printoptions(precision=5)
+
 def checkin(low, up, point):
     result = 1
     for i in range(low.shape[0]):
@@ -33,13 +35,18 @@ for i in range(20):
 
 # temp = E[4]
 temp = E[4].order_reduction(7)
-temp.g = temp.g * 2
+temp.g = temp.g * 1.5
 
 D_low = [-0.6327720639435364, -0.602399556735256, -0.6596764214473849, -1.3641168110318211, -1.2465597978222978, -1.4271499822702531, -1.3953298454509189]
 D_up = [-0.03429068321966455, 0.03286102079409425, -0.05438234810840625, -0.3470178501868151, -0.2749886047735577, -0.46296348863231485, -0.40030780345735284]
 
 D_low = np.array(D_low)
 D_up = np.array(D_up)
+
+# D_low[1] = D_low[1] * 1.5
+# D_up[1] = D_up[1] * 1.5
+# D_low[2] = D_low[2] * 2
+# D_up[2] = D_up[2] * 2
 
 steps = (D_up - D_low) / 2
 
@@ -55,38 +62,35 @@ constraints += [
     (beta[k] >= -1) for k in range(dim)
 ]
 constraints += [
-    temp.c + temp.g @ beta <= D_up
+    ((temp.c + temp.g @ beta)[k] <= D_up[k]) for k in range(dim)
 ]
 constraints += [
-    temp.c + temp.g @ beta >= D_low
+    ((temp.c + temp.g @ beta)[k] >= D_low[k]) for k in range(dim)
 ]
 problem = cp.Problem(cp.Minimize(0), constraints)
 result = problem.solve()
 print(beta.value)
-# print("result point")
-# print(temp.g @ beta.value)
+print("result point")
+print(temp.g @ beta.value)
 
 E_inv = np.linalg.inv(temp.g)
-# print(E_inv @ temp.g @ beta.value)
+print("#########################")
+# print(E_inv)
 t = E_inv @ temp.g
+# print(t)
 print("up")
 print(E_inv @ D_up)
-print("low"),
+print("low")
 print(E_inv @ D_low)
-D_1 = D_up
-D_1[1] = 0
-print(E_inv @ D_1)
-D_2 = D_up
-D_2[2] = D_low[2]
-D_2[3] = D_low[3]
-print(E_inv @ D_2)
-
-D_3 = (D_up + D_low)/2
-print(E_inv @ D_3)
-
-
+print("I")
+print(temp.g @ E_inv)
+print(temp.g @ E_inv @ D_up)
 # print(temp.g @ E_inv @ D_up)
 # print(temp.g @ E_inv @ D_low)
+move = np.zeros(7)
+move[2] = -0.028
+print("temp.g @ move")
+print(temp.g @ move)
 
 # start = (D_low + D_up)/2
 # alp = E_inv @ start
