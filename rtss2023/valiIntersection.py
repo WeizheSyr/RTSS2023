@@ -4,7 +4,8 @@ import cvxpy as cp
 from utils.Baseline import Platoon
 import time
 
-np.set_printoptions(precision=5)
+# np.set_printoptions(precision=5)
+np.set_printoptions(suppress=True)
 
 def checkin(low, up, point):
     result = 1
@@ -33,9 +34,32 @@ for i in range(20):
         E.append(E[-1] + A_i_B_U[i])
         # E.append(A_i_B_U[0])
 
+# l = np.eye(A.shape[0])
+# E_up = []
+# E_low = []
+# for j in range(7):
+#     E_low.append(E[4].support(l[j], -1))
+#     E_up.append(E[4].support(l[j]))
+# print("E_low")
+# print(E_low)
+# print("E_up")
+# print(E_up)
+
 # temp = E[4]
 temp = E[4].order_reduction(7)
-temp.g = temp.g * 1.5
+temp.g = temp.g * 2.8
+
+# E_bound
+l = np.eye(A.shape[0])
+E_up = []
+E_low = []
+for j in range(7):
+    E_low.append(temp.support(l[j], -1))
+    E_up.append(temp.support(l[j]))
+print("E_low")
+print(E_low)
+print("E_up")
+print(E_up)
 
 D_low = [-0.6327720639435364, -0.602399556735256, -0.6596764214473849, -1.3641168110318211, -1.2465597978222978, -1.4271499822702531, -1.3953298454509189]
 D_up = [-0.03429068321966455, 0.03286102079409425, -0.05438234810840625, -0.3470178501868151, -0.2749886047735577, -0.46296348863231485, -0.40030780345735284]
@@ -50,16 +74,17 @@ D_up = np.array(D_up)
 
 steps = (D_up - D_low) / 2
 
-dim = temp.g.shape[1]
+ord = temp.g.shape[1]
+dim = 7
 # temp = E[9]
 
-beta = cp.Variable([dim], name="beta")
+beta = cp.Variable([ord], name="beta")
 
 constraints = [
-    (beta[k] <= 1) for k in range(dim)
+    (beta[k] <= 1) for k in range(ord)
 ]
 constraints += [
-    (beta[k] >= -1) for k in range(dim)
+    (beta[k] >= -1) for k in range(ord)
 ]
 constraints += [
     ((temp.c + temp.g @ beta)[k] <= D_up[k]) for k in range(dim)
@@ -69,132 +94,200 @@ constraints += [
 ]
 problem = cp.Problem(cp.Minimize(0), constraints)
 result = problem.solve()
+print("beta.value")
 print(beta.value)
 print("result point")
-print(temp.g @ beta.value)
+result = temp.g @ beta.value
+print(result)
 
-E_inv = np.linalg.inv(temp.g)
-print("#########################")
+E_inv = np.linalg.pinv(temp.g)
 # print(E_inv)
-t = E_inv @ temp.g
-# print(t)
-print("up")
-print(E_inv @ D_up)
-print("low")
-print(E_inv @ D_low)
-print("I")
-print(temp.g @ E_inv)
-print(temp.g @ E_inv @ D_up)
-# print(temp.g @ E_inv @ D_up)
-# print(temp.g @ E_inv @ D_low)
-move = np.zeros(7)
-move[2] = -0.028
-print("temp.g @ move")
-print(temp.g @ move)
-
-# start = (D_low + D_up)/2
-# alp = E_inv @ start
-# delta = np.zeros(7)
-# for i in range(7):
-#     if alp[i] >= 1:
-#         delta[i] = alp[i] - 1
-#     elif alp[i] <= -1:
-#         delta[i] = alp[i] + 1
-# dir = temp.g @ delta
-# dir = -dir
-# dirNorm = abs(dir)
-# num = np.argsort(dirNorm)[-1]
-# if start[num] + dir[num] >= D_up[num]:
-#     step = D_up[num] - start[num]
-# elif start[num] + dir[num] <= D_low[num]:
-#     step = D_low[num] - start[num]
-# else:
-#     step = dir[num]
-# flags = 0
-# while(True):
-#     start[num] = start[num] + step
-#     print("start", start)
-#     alp = E_inv @ start
-#     print("alp", alp)
-#     delta = np.zeros(7)
-#     end = 1
-#     for i in range(7):
-#         if alp[i] >= 1:
-#             delta[i] = alp[i] - 1
-#             end = 0
-#         elif alp[i] <= -1:
-#             delta[i] = alp[i] + 1
-#             end = 0
-#     if end == 1:
-#         print("intersect")
-#         break
-#     dir = temp.g @ delta
-#     dir = -dir
-#     dirNorm = abs(dir)
-#     for i in range(7):
-#         num = np.argsort(dirNorm)[-1 - i]
-#         if start[num] + dir[num] >= D_up[num]:
-#             step = D_up[num] - start[num]
-#         elif start[num] + dir[num] <= D_low[num]:
-#             step = D_low[num] - start[num]
-#         else:
-#             step = dir[num]
-#         if step <= -1e-15 or step >= 1e-15:
-#             print("step, num", step, num)
-#             break
-#         if i == 6 and (step >= -1e-15 or step <= 1e-15):
-#             flags += 1
-#             if flags == 7:
-#                 print("no intersect")
-#                 exit()
-#             if alp[flags] >= 1:
-#                 delta[flags] = alp[flags] + 1
-#             elif alp[flags] <= -1:
-#                 delta[flags] = alp[flags] - 1
-#             i = 0
-#             # start = (D_low + D_up)/2
-#             # start[flags] = ((D_low + D_up)/2)[flags] + steps[flags]
-#             # step = 0
-#             # flags += 1
-
-
-# t = np.ones(dim).reshape(-1, 1).T
-# G = np.append(temp.g, np.eye(dim), axis=0)
-# lo = np.append(D_low, -np.ones(dim))
-# up = np.append(D_up, np.ones(dim))
-# E_inv = np.linalg.pinv(G)
-# k = E_inv @ G
-# print(k)
-# print("lo")
-# lo = lo.reshape(-1, 1)
-# up = up.reshape(-1, 1)
-# print(E_inv @ lo)
 # print("up")
-# print(E_inv @ up)
+# print(E_inv @ D_up)
+# print("low")
+# print(E_inv @ D_low)
+
+# intersection on dim
+# new box
+select = []
+new_low = []
+new_up = []
+for i in range(dim):
+    # contain
+    if E_low[i] <= D_low[i] and E_up[i] >= D_up[i]:
+        new_up.append(D_up[i])
+        new_low.append(D_low[i])
+        # select.append(0)
+    elif E_low[i] >= D_low[i] and E_up[i] <= D_up[i]:
+        new_up.append(E_up[i])
+        new_low.append(E_low[i])
+        # select.append(0)
+    elif E_low[i] <= D_low[i] and E_up[i] <= D_up[i]:
+        new_up.append(E_up[i])
+        new_low.append(D_low[i])
+        # select.append()
+    elif E_low[i] >= D_low[i] and E_up[i] >= D_up[i]:
+        new_up.append(D_up[i])
+        new_low.append(E_low[i])
+    elif E_up[i] <= D_low[i] or E_low[i] >= D_up[i]:
+        print("no intersection")
+        exit(1)
+new_up = np.array(new_up)
+new_low = np.array(new_low)
+print("new_up")
+print(new_up)
+print("new_low")
+print(new_low)
+
+print("up")
+print(E_inv @ new_up)
+print("low")
+print(E_inv @ new_low)
+print(E_inv @ result)
+
+def check_pass(a, b):
+    up = np.ones(7)
+    up = up - b
+    low = -np.ones(7) - b
+
+    for i in range(7):
+        t = a[i] - b[i]
+        if t > 0:
+            up[i] = up[i] / t
+            low[i] = low[i] / t
+        elif t < 0:
+            temp = up[i]
+            up[i] = low[i] / t
+            low[i] = temp / t
+
+    f_up = 0
+    f_low = 0
+    signal = 1
+    for i in range(7):
+        if i == 0:
+            f_up = up[i]
+            f_low = low[i]
+        else:
+            if f_up >= up[i] and f_low <= low[i]:
+                f_up = up[i]
+                f_low = low[i]
+            elif f_up <= up[i] and f_low <= low[i]:
+                f_low = low[i]
+            elif f_up >= up[i] and f_low >= low[i]:
+                f_up = up[i]
+            elif f_low >= up[i] or f_up <= low[i]:
+                signal = -1
+                break
+    if f_low > 1 or f_up < -0:
+        signal = -1
+    return f_low, f_up, signal
+
+# start from center
+# center = (new_up + new_low) / 2
+# print("center", center)
+# re1 = E_inv @ center
+# print("re1", re1)
+
+# start from new_up
+re1 = E_inv @ new_up
+print("re1", re1)
 
 
-# dirct = (D_up + D_low) / 2
-# print(np.linalg.norm(dirct))
-# generators = np.zeros(dim)
-# pOrN = np.zeros(dim)
-# print("generators")
-# for i in range(dim):
-#     t = np.dot(temp.g[:, i].T, dirct)
-#     generators[i] = abs(t)
-#     print(generators)
-#     if t < 0:
-#         pOrN[i] = -1
-#     else:
-#         pOrN[i] = 1
-# gSort = np.argsort(generators)
-# gSort = gSort[::-1]
-# print("gsort", gSort)
-# t = np.zeros(dim)
-# for i in range(dim):
-#     flag = gSort[i]
-#     t += temp.g[:, flag].T * pOrN[flag]
-#     print(np.linalg.norm(dirct - t))
-#     end = checkin(D_low, D_up, t)
-#     if end:
-#         print("intersect")
-# print("not intersect")
+# face
+def to_face(a):
+    a = abs(a)
+    r = 0
+    for i in range(7):
+        if i == 0:
+            r = 1 / a[i]
+        else:
+            t = 1 / a[i]
+            if t <= r:
+                r = t
+    return r
+
+face_point = re1 * to_face(re1)
+dis1 = temp.g @ face_point
+print("dis1", dis1)
+
+
+def next_step(dis1, step, new_up, new_low):
+    step1 = np.zeros(7)
+    for i in range(7):
+        if dis1[i] < step[i]:
+            if dis1[i] < new_low[i]:
+                step1[i] = new_low[i]
+            else:
+                step1[i] = dis1[i]
+        elif dis1[i] > step[i]:
+            if dis1[i] < new_up[i]:
+                step1[i] = dis1[i]
+            else:
+                step1[i] = new_up[i]
+    return step1
+
+
+# next step
+step1 = next_step(dis1, new_up, new_up, new_low)
+print("step1", step1)
+re2 = E_inv @ step1
+print("re2", re2)
+
+# check pass
+f_low, f_up, signal = check_pass(re1, re2)
+print(f_low, f_up, signal)
+
+face_point2 = re2 * to_face(re2)
+dis2 = temp.g @ face_point2
+print("dis2", dis2)
+
+step2 = next_step(dis2, step1, new_up, new_low)
+print("step2", step2)
+re3 = E_inv @ step2
+print("re3", re3)
+
+f_low, f_up, signal = check_pass(re2, re3)
+print(f_low, f_up, signal)
+
+face_point3 = re3 * to_face(re3)
+dis3 = temp.g @ face_point3
+print("dis3", dis3)
+
+step3 = next_step(dis3, step2, new_up, new_low)
+print("step3", step3)
+re4 = E_inv @ step3
+print("re4", re4)
+
+f_low, f_up, signal = check_pass(re4, re1)
+print(f_low, f_up, signal)
+# print(temp.g @ (f_up * re4 + (1-f_up) * re1))
+
+
+face_point4 = re4 * to_face(re4)
+dis4 = temp.g @ face_point4
+print("dis4", dis4)
+
+step4 = next_step(dis4, step3, new_up, new_low)
+print("step4", step4)
+re5 = E_inv @ step4
+print("re5", re5)
+
+f_low, f_up, signal = check_pass(re5, re4)
+print(f_low, f_up, signal)
+
+re = re5
+step = step4
+start = time.time()
+for i in range(10):
+    face_point = re * to_face(re)
+    dis = temp.g @ face_point
+    # print("dis", dis)
+
+    old_step = step
+    step = next_step(dis, step, new_up, new_low)
+    # print("step", step)
+    old_re = re
+    re = E_inv @ step
+    # print("re", re)
+end = time.time()
+print(end - start)
