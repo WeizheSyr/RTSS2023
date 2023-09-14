@@ -19,6 +19,8 @@ def checkinBox(low, up, point):
     return result
 
 def checkPass(a, b, z:Zonotope):
+    # a, b point position
+
     up = np.ones(7)
     up = up - b
     low = -np.ones(7) - b
