@@ -183,14 +183,14 @@ def check_pass(a, b):
     return f_low, f_up, signal
 
 # start from center
-# center = (new_up + new_low) / 2
-# print("center", center)
-# re1 = E_inv @ center
-# print("re1", re1)
+center = (new_up + new_low) / 2
+print("center", center)
+re1 = E_inv @ center
+print("re1", re1)
 
 # start from new_up
-re1 = E_inv @ new_up
-print("re1", re1)
+# re1 = E_inv @ new_up
+# print("re1", re1)
 
 
 # face
@@ -228,7 +228,7 @@ def next_step(dis1, step, new_up, new_low):
 
 
 # next step
-step1 = next_step(dis1, new_up, new_up, new_low)
+step1 = next_step(dis1, center, new_up, new_low)
 print("step1", step1)
 re2 = E_inv @ step1
 print("re2", re2)

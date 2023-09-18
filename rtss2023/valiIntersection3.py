@@ -6,6 +6,11 @@ import time
 
 np.set_printoptions(suppress=True)
 
+def getT(a, b):
+    # b is generator
+    k = np.dot(a, b)/np.dot(b, b)
+    return k
+
 def closestPoint(low, up, point):
     re = np.zeros(low.shape[0])
     for i in range(low.shape[0]):
@@ -20,10 +25,10 @@ def closestPoint(low, up, point):
 def checkinBox(low, up, point):
     result = 1
     for i in range(low.shape[0]):
-        if point[i] <= low[i]:
+        if point[i] <= low[i] - 0.01:
             result = 0
             return result
-        if point[i] >= up[i]:
+        if point[i] >= up[i] + 0.01:
             result = 0
             return result
     return result
@@ -144,6 +149,7 @@ print(new_up)
 print("new_low")
 print(new_low)
 
+
 box = Zonotope.from_box(new_low, new_up)
 boxG = new_up - box.c
 
@@ -166,79 +172,63 @@ problem = cp.Problem(cp.Minimize(0), constraints)
 result = problem.solve()
 print("beta.value")
 print(beta.value)
-print("result point")
-result_point = temp.g @ beta.value
-print(result_point)
+# print("result point")
+# result_point = temp.g @ beta.value
+# print(result_point)
 
 start = temp.c
 dir = np.zeros(ord)
 used = np.zeros(ord)
+move = np.zeros(ord)
 usedout = 1
 i = 0
+iteration = 0
+starttime = time.time()
 while i < ord:
-    t = np.dot(closestPoint(new_low, new_up, start) - start, temp.g[:, i])
-    if t > 0:
-        if dir[i] != 1 and used[i] == 0:
+    t = getT(closestPoint(new_low, new_up, start) - start, temp.g[:, i])
+    # t = getT(box.c - start, temp.g[:, i])
+    if -0.00001 <= t <= 0.00001:
+         t = 0
+    # t = getT(box.c - start, temp.g[:, i])
+    # print("t", t)
+    if t != 0:
+        usedout = 0
+        if t + dir[i] >= 1:
+            move[i] = 1 - dir[i]
             dir[i] = 1
-        else:
-            used[i] = 1
-            dir[i] = 0
-    elif t < 0:
-        if dir[i] != -1 and used[i] == 0:
+        elif t + dir[i] <= -1:
+            move[i] = -1 - dir[i]
             dir[i] = -1
-        else:
-            used[i] = 1
-            dir[i] = 0
-    else:
-        print("vertical")
-        dir[i] = 0
-    print("dir", i, dir[i])
-    next = start + dir[i] * temp.g[:, i]
-    distance = np.linalg.norm(next - box.c)
-    re = checkinBox(new_low, new_up, next)
-    if re == 1:
-        print("intersect point", next)
-        break
-    f_low, f_up, signal = checkPass(start, next, box.c, boxG)
-    if signal != -1:
-        print("pass intersection", start, next)
-        break
-    start = next
+        elif -1 <= t + dir[i] <= 1:
+            move[i] = t
+            dir[i] = t + dir[i]
+        # print("dir", i, dir[i])
+        # print("move", move[i])
+        next = start + move[i] * temp.g[:, i]
+        # print(next)
+        # distance = np.linalg.norm(next - closestPoint(new_low, new_up, next))
+        # print("distance", distance)
+        re = checkinBox(new_low, new_up, next)
+        if re == 1:
+            print("intersect point", next)
+            break
+        # f_low, f_up, signal = checkPass(start, next, box.c, boxG)
+        # if signal != -1:
+        #     # print("pass intersection", start, next)
+        #     break
+        start = next
 
     if i == ord - 1:
-        print("one iteration")
-        for j in range(ord):
-            if used[j] == 0:
-                usedout = 0
+        # print("one iteration")
+        iteration += 1
         if usedout == 0:
             i = -1
             usedout = 1
         else:
             break
     i += 1
+endtime = time.time()
+print("time", endtime-starttime)
+print("iteration", iteration)
 print("finish explore")
-
-# # Explore
-# dir = np.zeros(ord)
-# for i in range(ord):
-#     t = np.dot(box.c, temp.g[:, i])
-#     if t > 0:
-#         dir[i] = 1
-#     elif t < 0:
-#         dir[i] = -1
-#
-# start = temp.c
-# for i in range(ord):
-#     next = start + dir[i] * temp.g[:, i]
-#     print(next)
-#     distance = np.linalg.norm(next - box.c)
-#     print(distance)
-#     re = checkinBox(new_low, new_up, next)
-#     if re == 1:
-#         print("intersect point", next)
-#     f_low, f_up, signal = checkPass(start, next, box.c, boxG)
-#     if signal != -1:
-#         print("pass intersection", start, next)
-#     start = next
-# print("finish explore")
 
