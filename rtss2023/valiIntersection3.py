@@ -119,35 +119,38 @@ D_up = [-0.07516555595502172, -0.17636215476439565, -0.03138843058711416, -0.472
 D_low = np.array(D_low)
 D_up = np.array(D_up)
 
-# Crop the box
-new_low = []
-new_up = []
-for i in range(dim):
-    # contain
-    if E_low[i] <= D_low[i] and E_up[i] >= D_up[i]:
-        new_up.append(D_up[i])
-        new_low.append(D_low[i])
-        # select.append(0)
-    elif E_low[i] >= D_low[i] and E_up[i] <= D_up[i]:
-        new_up.append(E_up[i])
-        new_low.append(E_low[i])
-        # select.append(0)
-    elif E_low[i] <= D_low[i] and E_up[i] <= D_up[i]:
-        new_up.append(E_up[i])
-        new_low.append(D_low[i])
-        # select.append()
-    elif E_low[i] >= D_low[i] and E_up[i] >= D_up[i]:
-        new_up.append(D_up[i])
-        new_low.append(E_low[i])
-    elif E_up[i] <= D_low[i] or E_low[i] >= D_up[i]:
-        print("no intersection")
-        exit(1)
-new_up = np.array(new_up)
-new_low = np.array(new_low)
-print("new_up")
-print(new_up)
-print("new_low")
-print(new_low)
+# # Crop the box
+# new_low = []
+# new_up = []
+# for i in range(dim):
+#     # contain
+#     if E_low[i] <= D_low[i] and E_up[i] >= D_up[i]:
+#         new_up.append(D_up[i])
+#         new_low.append(D_low[i])
+#         # select.append(0)
+#     elif E_low[i] >= D_low[i] and E_up[i] <= D_up[i]:
+#         new_up.append(E_up[i])
+#         new_low.append(E_low[i])
+#         # select.append(0)
+#     elif E_low[i] <= D_low[i] and E_up[i] <= D_up[i]:
+#         new_up.append(E_up[i])
+#         new_low.append(D_low[i])
+#         # select.append()
+#     elif E_low[i] >= D_low[i] and E_up[i] >= D_up[i]:
+#         new_up.append(D_up[i])
+#         new_low.append(E_low[i])
+#     elif E_up[i] <= D_low[i] or E_low[i] >= D_up[i]:
+#         print("no intersection")
+#         exit(1)
+# new_up = np.array(new_up)
+# new_low = np.array(new_low)
+# print("new_up")
+# print(new_up)
+# print("new_low")
+# print(new_low)
+
+new_low = D_low
+new_up = D_up
 
 
 box = Zonotope.from_box(new_low, new_up)
