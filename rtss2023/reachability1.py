@@ -1,5 +1,3 @@
-import getopt
-
 import numpy as np
 from utils.formal.zonotope import Zonotope
 
@@ -118,48 +116,6 @@ class Reachability1:
             D_boxes.append(Zonotope.from_box(np.array(low), np.array(up)))
         return D_boxes
 
-    def check_opt_intersect(self, D_boxes):
-        results = []
-        for i in range(self.max_step):
-            startTime = time.time()
-            results.append(self.opt_intersect(self.E[i], D_boxes[i]))
-            endTime = time.time()
-            print("ith: ", i)
-            print("time", endTime - startTime)
-        return results
-
-    def opt_intersect(self, first: Zonotope, second: Zonotope):
-        alpha = cp.Variable([first.g.shape[1]], name="alpha")
-        beta = cp.Variable([second.g.shape[1]], name="beta")
-        x = cp.Variable()
-
-        obj = x
-
-        constraints = [
-            (alpha[k] <= 1) for k in range(first.g.shape[1])
-        ]
-        constraints += [
-            (alpha[k] >= -1) for k in range(first.g.shape[1])
-        ]
-        constraints += [
-            (beta[k] <= 1) for k in range(second.g.shape[1])
-        ]
-        constraints += [
-            (beta[k] >= -1) for k in range(second.g.shape[1])
-        ]
-        constraints += [
-            first.c + first.g @ alpha == second.c + second.g @ beta
-        ]
-        constraints += [
-            x == 0
-        ]
-        problem = cp.Problem(cp.Minimize(obj), constraints)
-        result = problem.solve(solver=cp.SCIPY)
-        if np.isnan(result):
-            return False
-        else:
-            return True
-
     def minkowski_dif(self, first: Zonotope, second: Zonotope):
         D_low = []
         D_up = []
@@ -243,12 +199,6 @@ class Reachability1:
         D_boxes = self.D_bound_box()
         endTimeBox = time.time()
         print("timeBox", endTimeBox - startTimeBox)
-
-        # startTimeOpt = time.time()
-        # opt_results = self.check_opt_intersect(D_boxes)
-        # endTimeOpt = time.time()
-        # print("timeSumOpt", endTimeOpt - startTimeOpt)
-        # print("opt_results", opt_results)
 
         print("results", self.result)
         k1 = 0
@@ -360,7 +310,6 @@ class Reachability1:
 
         self.delta_theta = delta_theta
         return delta_theta
-
 
 
     def adjust(self, k, start, end, klevel):
