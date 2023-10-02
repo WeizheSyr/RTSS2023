@@ -50,9 +50,17 @@ class Reachability:
         return E
 
     def bound_E(self):
-        lo = []
-        up = []
-
+        E_lo = []
+        E_up = []
+        for i in range(self.max_step):
+            lo = []
+            up = []
+            for j in range(self.A.shape[0]):
+                lo.append(self.E[i].support(self.l[j], -1))
+                up.append(self.E[i].support(self.l[j]))
+            E_lo.append(lo)
+            E_up.append(up)
+        return E_lo, E_up
 
     # zonotope D4
     def reach_D4(self):
@@ -128,9 +136,10 @@ class Reachability:
         # precheck before explore
         if self.preCheck(self.D_lo[d], self.D_up[d], d):
             return 0, np.zeros(dim)
+        new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], d)
 
         start = self.E[d].c
-        center = (self.D_lo[d] + self.D_up[d]) / 2
+        center = (new_lo + new_up) / 2
         dir = np.zeros(ord)
         move = np.zeros(ord)
         usedout = 1
@@ -161,7 +170,7 @@ class Reachability:
                 # print(next)
                 # distance = np.linalg.norm(next - closestPoint(new_low, new_up, next))
                 # print("distance", distance)
-                re = self.checkinBox(self.D_lo[d], self.D_up[d], next)
+                re = self.checkinBox(new_lo, new_up, next)
                 if re == 1:
                     # print("intersect point", next)
                     return 1, np.zeros(dim)
@@ -228,10 +237,23 @@ class Reachability:
                 return 1
         return 0
 
-    def crop(self, D_lo, D_up, d):
+    def cropBox(self, D_lo, D_up, d):
         new_lo = []
         new_up = []
         for i in range(self.A.shape[0]):
             if self.E_lo[d][i] <= D_lo[i] and self.E_up[d][i] >= D_up[i]:
                 new_up.append(D_up[i])
-                new_low.append(D_low[i])
+                new_lo.append(D_lo[i])
+            elif self.E_lo[d][i] >= D_lo[i] and self.E_up[d][i] <= D_up[i]:
+                new_up.append(self.E_up[d][i])
+                new_lo.append(self.E_lo[d][i])
+            elif self.E_lo[d][i] <= D_lo[i] and self.E_up[d][i] <= D_up[i]:
+                new_up.append(self.E_up[d][i])
+                new_lo.append(D_lo[i])
+            elif self.E_lo[d][i] >= D_lo[i] and self.E_up[d][i] >= D_up[i]:
+                new_up.append(D_up[i])
+                new_lo.append(self.E_lo[d][i])
+
+        new_lo = np.array(new_lo)
+        new_up = np.array(new_up)
+        return new_lo, new_up
