@@ -3,7 +3,7 @@ from utils.formal.zonotope import Zonotope
 import time
 
 class Reachability:
-    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=10):
+    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=20):
         self.A = A
         self.B = B
         self.P = P
@@ -132,9 +132,8 @@ class Reachability:
     # return 1/0: intersect or not, distance: closest point's distance
     def check_intersection(self, d):
         ord = self.E[d].g.shape[1]
-        dim = self.A.shape[0]
 
-        # precheck before explore
+        # pre-check before explore
         if self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d]):
             return 0, 0
         new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
@@ -148,14 +147,12 @@ class Reachability:
         iteration = 0
 
         while i < ord:
-            # t = getT(closestPoint(new_low, new_up, start) - start, temp.g[:, i])
-            t = self.getT(center - start, self.E[d].g[:, i])
-            if -0.00001 <= t <= 0.00001:
-                t = 0
+            t = self.getT(self.closestPoint(new_lo, new_up, start) - start, self.E[d].g[:, i])
+            # t = self.getT(center - start, self.E[d].g[:, i])
             # t = getT(box.c - start, temp.g[:, i])
             # print("t", t)
-            if t != 0:
-                usedout = 0
+            if not self.newEqual(t, 0):
+                # usedout = 0
                 if t + dir[i] >= 1:
                     move[i] = 1 - dir[i]
                     dir[i] = 1
@@ -167,6 +164,8 @@ class Reachability:
                     dir[i] = t + dir[i]
                 # print("dir", i, dir[i])
                 # print("move", move[i])
+                if not self.newEqual(move[i], 0):
+                    usedout = 0
                 next = start + move[i] * self.E[d].g[:, i]
                 # print(next)
                 # distance = np.linalg.norm(next - closestPoint(new_low, new_up, next))
@@ -214,13 +213,24 @@ class Reachability:
     def checkinBox(self, low, up, point):
         result = 1
         for i in range(low.shape[0]):
-            if point[i] <= low[i] - 0.01:
+            if point[i] <= low[i] - 0.001:
                 result = 0
                 return result
-            if point[i] >= up[i] + 0.01:
+            if point[i] >= up[i] + 0.001:
                 result = 0
                 return result
         return result
+    # check a point in the box
+    # def checkinBox(self, low, up, point):
+    #     result = 1
+    #     for i in range(low.shape[0]):
+    #         if point[i] <= low[i] - 0.01:
+    #             result = 0
+    #             return result
+    #         if point[i] >= up[i] + 0.01:
+    #             result = 0
+    #             return result
+    #     return result
 
     def checkEmpty(self, lo, up):
         for i in range(self.A.shape[0]):
@@ -258,3 +268,9 @@ class Reachability:
         new_lo = np.array(new_lo)
         new_up = np.array(new_up)
         return new_lo, new_up
+
+    def newEqual(self, a, b):
+        if -0.001 <= a - b <= 0.001:
+            return 1
+        else:
+            return 0
