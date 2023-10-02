@@ -3,7 +3,7 @@ from utils.formal.zonotope import Zonotope
 import time
 
 class Reachability:
-    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=20):
+    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=10):
         self.A = A
         self.B = B
         self.P = P
@@ -26,13 +26,14 @@ class Reachability:
 
         # E
         self.E = self.reach_E()
+        self.E_lo, self.E_up = self.bound_E()
 
         # D
-        self.D2 = np.zeros(self.max_step)
-        self.D3 = np.zeros(self.max_step)
+        self.D2 = None
+        self.D3 = None
         self.D4 = self.reach_D4()
-        self.D_lo = np.zeros(self.max_step)
-        self.D_up = np.zeros(self.max_step)
+        self.D_lo = None
+        self.D_up = None
 
         # result of checking intersection
         self.intersection = np.zeros(self.max_step)
@@ -48,6 +49,11 @@ class Reachability:
                 E.append(E[-1] + self.A_i_B_U[i])
         return E
 
+    def bound_E(self):
+        lo = []
+        up = []
+
+
     # zonotope D4
     def reach_D4(self):
         D4 = []
@@ -60,17 +66,23 @@ class Reachability:
 
     # update D2, D3
     def reach_D23(self, x_hat, theta):
+        D2 = []
+        D3 = []
         for i in range(self.max_step):
-            self.D2[i] = self.A_i[i] @ x_hat
-            self.D3[i] = self.A_i[i] @ theta
-        return self.D2, self.D3
+            D2.append(self.A_i[i] @ x_hat)
+            D3.append(self.A_i[i] @ theta)
+        return D2, D3
 
     # bound of box D
     def D_bound(self):
+        D_lo = []
+        D_up = []
         for i in range(self.max_step):
             second = self.D2[i] + self.D3[i] + self.D4[i]
-            self.D_lo[i], self.D_up[i] = self.minkowski_dif(self.t_lo, self.t_up, second)
-        return self.D_lo, self.D_up
+            lo, up= self.minkowski_dif(self.t_lo, self.t_up, second)
+            D_lo.append(lo)
+            D_up.append(up)
+        return D_lo, D_up
 
     # minkowski_dif between box and zonotope
     def minkowski_dif(self, first_lo, first_up, second: Zonotope):
@@ -81,14 +93,44 @@ class Reachability:
             up[i] = first_up[i] - second.support(self.l[i])
         return lo, up
 
+    # calculate k level recoverability of the current system
+    def k_level(self, x_hat, theta):
+        self.D2, self.D3 = self.reach_D23(x_hat, theta)
+        self.D_lo, self.D_up = self.D_bound()
+
+        ks = np.zeros(self.max_step)
+        distance = np.zeros(self.max_step)
+        for i in range(self.max_step):
+            ks[i], distance[i] = self.check_intersection(i)
+
+        k = np.sum(ks)
+        if k == 0:
+            return 0, 0, 0
+
+        start = 0
+        end = 0
+        for i in range(self.max_step):
+            if ks[i] == 1 and start == 0:
+                start = i
+            if ks[i] == 0 and start == 1:
+                end = i - 1
+            if i == self.max_step - 1 and end == 0:
+                end = self.max_step - 1
+
+        return k, start, end
+
     # check dth step's intersection
     # return 1/0: intersect or not, distance: closest point's distance
     def check_intersection(self, d):
         ord = self.E[d].g.shape[1]
         dim = self.A.shape[0]
+
+        # precheck before explore
+        if self.preCheck(self.D_lo[d], self.D_up[d], d):
+            return 0, np.zeros(dim)
+
         start = self.E[d].c
         center = (self.D_lo[d] + self.D_up[d]) / 2
-
         dir = np.zeros(ord)
         move = np.zeros(ord)
         usedout = 1
@@ -138,7 +180,7 @@ class Reachability:
                 else:
                     break
             i += 1
-        return 0,
+        return 0, np.zeros(dim)
 
     # projection of the line to the generator
     def getT(self, a, b):
@@ -169,3 +211,27 @@ class Reachability:
                 result = 0
                 return result
         return result
+
+    def checkEmpty(self, lo, up):
+        for i in range(self.A.shape[0]):
+            if lo[i] >= up[i]:
+                return 1
+        return 0
+
+    def preCheck(self, lo, up, d):
+        for i in range(self.A.shape[0]):
+            # empty set
+            if lo[i] >= up[i]:
+                return 1
+            # impossible intersection
+            if lo[i] >= self.D_up[d][i] or up[i] <= self.D_lo[d][i]:
+                return 1
+        return 0
+
+    def crop(self, D_lo, D_up, d):
+        new_lo = []
+        new_up = []
+        for i in range(self.A.shape[0]):
+            if self.E_lo[d][i] <= D_lo[i] and self.E_up[d][i] >= D_up[i]:
+                new_up.append(D_up[i])
+                new_low.append(D_low[i])
