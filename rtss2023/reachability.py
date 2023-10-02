@@ -110,6 +110,7 @@ class Reachability:
         distance = np.zeros(self.max_step)
         for i in range(self.max_step):
             ks[i], distance[i] = self.check_intersection(i)
+            print("i", i, "ks[i]", ks[i])
 
         k = np.sum(ks)
         if k == 0:
