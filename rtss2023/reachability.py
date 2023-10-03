@@ -41,6 +41,10 @@ class Reachability:
 
         # adjust Tau
         self.adjustDirs = None
+        # s norm positive or negative
+        self.sNorm = None
+        self.deltaCs = None
+        self.deltaEs = None
 
     # zonotope E
     def reach_E(self):
@@ -88,11 +92,14 @@ class Reachability:
     def D_bound(self):
         D_lo = []
         D_up = []
+        sNorm = []
         for i in range(self.max_step):
             second = self.D2[i] + self.D3[i] + self.D4[i]
+            sNorm.append(self.getSNorm(self.D3[i]))
             lo, up= self.minkowski_dif(self.t_lo, self.t_up, second)
             D_lo.append(lo)
             D_up.append(up)
+        self.sNorm = sNorm
         return D_lo, D_up
 
     # minkowski_dif between box and zonotope
@@ -296,33 +303,63 @@ class Reachability:
         return adjustDir
 
 
-    def adjustTau(self, pOrN):
+    def adjustTau(self, pOrN, start, end):
         # box's center movements
         deltaCs = []
         # box's edge movements
         deltaEs = []
+        # corresponding steps
         for d in range(self.max_step):
             deltaC = []
             deltaE = []
+            # corresponding support vectors
             for j in range(self.A.shape[0]):
                 t = np.zeros(self.A.shape)
                 for i in range(len(pOrN)):
                     t += self.A_i[i] * pOrN[-i]
                 t = 0.5 * self.A_i[d] @ t
                 t = t.T @ self.l[j]
-                deltaC.append(t)
+                deltaC.append(t.T)
 
-                s = np.zeros(self.A.shape)
-
-                s = 0.5 * self.A_i[d].T
+                # select one column in 1/2 A_i
+                b = (0.5 * self.A_i[d].T)[:, j]
+                # corresponding generators
+                for i in range(self.A.shape[0]):
+                    b[i] = b[i] * self.sNorm[d][j][i]
                 sum_A_i = np.zeros(self.A.shape)
                 for i in range(len(pOrN)):
                     sum_A_i += self.A_i[i]
+                # select one row in sum_A_i
+                a = sum_A_i[j]
+                deltaE.append(np.sum(b) * a)
+            deltaCs.append(deltaC)
+            deltaEs.append(deltaE)
 
+        self.deltaCs = deltaCs
+        self.deltaEs = deltaEs
 
+        objStep = start - 1
+        deltaTau = self.getDeltaTau(objStep)
+        return deltaTau
 
+    def getSNorm(self, D: Zonotope):
+        sNorms = []
+        # corresponding support vectors
+        for i in range(self.A.shape[0]):
+            sNorm = []
+            t = D.g.T @ self.l[i]
+            # corresponding generators
+            for j in range(self.A.shape[0]):
+                if t[j] >= 0:
+                    sNorm.append(1)
+                else:
+                    sNorm.append(-1)
+            sNorms.append(sNorm)
+        return sNorms
 
-
+    def getDeltaTau(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        return deltaTau
 
 
 
