@@ -58,4 +58,4 @@ class window:
 
     def adjust(self, delta_tau):
         for i in range(self.m):
-            self.tao[i] = self.tao[i] - delta_tau[i]
+            self.tao[i] = self.tao[i] + delta_tau[i]

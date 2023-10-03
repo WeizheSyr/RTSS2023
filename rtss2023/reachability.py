@@ -3,7 +3,7 @@ from utils.formal.zonotope import Zonotope
 import time
 
 class Reachability:
-    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=25):
+    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=20):
         self.A = A
         self.B = B
         self.P = P
@@ -45,6 +45,7 @@ class Reachability:
         self.sNorm = None
         self.deltaCs = None
         self.deltaEs = None
+        self.inOrOut = None
 
         # time
         self.timeIntersection = 0
@@ -350,8 +351,9 @@ class Reachability:
         else:
             objStep = self.max_step - 1
             for i in range(self.max_step):
-                if np.any(self.adjustDirs[-1]):
-                    objStep = self.max_step - i - 1
+                if np.any(self.adjustDirs[i]):
+                    objStep = i
+            # deltaTau = self.getDeltaTau(objStep)
             deltaTau = self.getDeltaTau(objStep)
         endTime = time.time()
         self.timeAdjust += endTime - startTime
@@ -391,12 +393,12 @@ class Reachability:
             if self.adjustDirs[d][i] > 0:
                 newAdjustDir[k] = self.adjustDirs[d][i]
                 for j in range(numDim):
-                    coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
+                    coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
             # delta C - delta E
             elif self.adjustDirs[d][i] < 0:
                 newAdjustDir[k] = self.adjustDirs[d][i]
                 for j in range(numDim):
-                    coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
+                    coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
         result = np.linalg.pinv(coefficient) @ newAdjustDir
         k = 0
         for i in range(self.A.shape[0]):
@@ -410,7 +412,40 @@ class Reachability:
 
     def getDeltaTauNew(self, d):
         deltaTau = np.zeros(self.A.shape[0])
+
+        coefficient = np.zeros(self.A.shape)
+        for i in range(self.A.shape[0]):
+            if self.adjustDirs[d][i] >= 0 and self.inOrOut[i] == 0:
+                coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
+            elif self.adjustDirs[d][i] <= 0 and self.inOrOut[i] == 0:
+                coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
+            elif self.adjustDirs[d][i] > 0 and self.inOrOut[i] == 1:
+                coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
+            elif self.adjustDirs[d][i] < 0 and self.inOrOut[i] == 1:
+                coefficient[i] = self.deltaCs[d][i] + self.deltaEs[d][i]
+
+        deltaTau = np.linalg.pinv(coefficient) @ self.adjustDirs[d]
+
         return deltaTau
+
+    def adjustDirNew(self, D_lo, D_up, point):
+        adjustDir = np.zeros(self.A.shape[0])
+        inOrOut = np.zeros(self.A.shape[0])
+        for i in range(self.A.shape[0]):
+            if point[i] <= D_lo[i]:
+                adjustDir[i] = point[i] - D_lo[i]
+                inOrOut[i] = 0
+            elif point[i] >= D_up[i]:
+                adjustDir[i] = point[i] - D_up[i]
+                inOrOut[i] = 0
+            elif D_lo[i] < point[i] < D_up[i]:
+                inOrOut[i] = 1
+                if D_up[i] - point[i] > point[i] - D_lo[i]:
+                    adjustDir[i] = point[i] - D_lo[i]
+                else:
+                    adjustDir[i] = point[i] - D_up[i]
+        self.inOrOut = inOrOut
+        return adjustDir
 
 
 
