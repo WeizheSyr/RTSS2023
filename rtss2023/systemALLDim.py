@@ -42,11 +42,12 @@ class SystemALLDim:
         self.detectResults = []
         self.detector = detector
         self.alarm_list = []
+        self.pOrN = None
 
         # recovery-ability
         self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
-        self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)
+        self.uz = Zonotope.from_box(np.ones(4) * -3, np.ones(4) * 3)
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1, 1]))
 
@@ -104,7 +105,8 @@ class SystemALLDim:
             if alarm:
                 print("alarm at", exp.model.cur_index)
                 return
-            if self.i >= 200:
+            # if self.i >= 200:
+            if self.i >= 80:
                 return
 
             # authentication
@@ -282,6 +284,7 @@ class SystemALLDim:
         pOrN = [0] * self.detector.m
         for i in range(self.detector.m):
             pOrN[i] = self.residuals[t][i] < 0 and -1 or 1
+        self.pOrN = pOrN
         l = len(self.y)
         rsum = np.zeros(self.detector.m)
         # for i in range(t):

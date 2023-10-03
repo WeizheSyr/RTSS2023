@@ -39,6 +39,9 @@ class Reachability:
         self.intersection = np.zeros(self.max_step)
         self.delta_theta = np.zeros(A.shape[0])
 
+        # adjust Tau
+        self.adjustDirs = None
+
     # zonotope E
     def reach_E(self):
         E = []
@@ -107,10 +110,18 @@ class Reachability:
         self.D_lo, self.D_up = self.D_bound()
 
         ks = np.zeros(self.max_step)
-        distance = np.zeros(self.max_step)
+        adjustDirs = []
+        startTime = time.time()
         for i in range(self.max_step):
-            ks[i], distance[i] = self.check_intersection(i)
-            print("i", i, "ks[i]", ks[i])
+            ks[i], adjustDir = self.check_intersection(i)
+            adjustDirs.append(adjustDir)
+            # print("i", i, "ks[i]", ks[i])
+        self.adjustDirs = adjustDirs
+        endTime = time.time()
+        print("++++++++++++++++++++++++++++++++")
+        print("check intersection time: ",endTime - startTime)
+        print("ks", ks)
+        print("++++++++++++++++++++++++++++++++")
 
         k = np.sum(ks)
         if k == 0:
@@ -135,7 +146,7 @@ class Reachability:
 
         # pre-check before explore
         if self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d]):
-            return 0, 0
+            return 0, np.zeros(self.A.shape[0])
         new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
 
         start = self.E[d].c
@@ -147,8 +158,8 @@ class Reachability:
         iteration = 0
 
         while i < ord:
-            t = self.getT(self.closestPoint(new_lo, new_up, start) - start, self.E[d].g[:, i])
-            # t = self.getT(center - start, self.E[d].g[:, i])
+            # t = self.getT(self.closestPoint(new_lo, new_up, start) - start, self.E[d].g[:, i])
+            t = self.getT(center - start, self.E[d].g[:, i])
             # t = getT(box.c - start, temp.g[:, i])
             # print("t", t)
             if not self.newEqual(t, 0):
@@ -173,7 +184,7 @@ class Reachability:
                 re = self.checkinBox(new_lo, new_up, next)
                 if re == 1:
                     # print("intersect point", next)
-                    return 1, 0
+                    return 1, self.adjustDir(new_lo, new_up, next)
                 # f_low, f_up, signal = checkPass(start, next, box.c, boxG)
                 # if signal != -1:
                 #     # print("pass intersection", start, next)
@@ -189,7 +200,7 @@ class Reachability:
                 else:
                     break
             i += 1
-        return 0, 0
+        return 0, np.zeros(self.A.shape[0])
 
     # projection of the line to the generator
     def getT(self, a, b):
@@ -274,3 +285,45 @@ class Reachability:
             return 1
         else:
             return 0
+
+    def adjustDir(self, D_lo, D_up, point):
+        adjustDir = np.zeros(self.A.shape)
+        for i in range(self.A.shape[0]):
+            if point[i] <= D_lo[i]:
+                adjustDir[i] = point[i] - D_lo[i]
+            elif point[i] >= D_up[i]:
+                adjustDir[i] = point[i] - D_up[i]
+        return adjustDir
+
+
+    def adjustTau(self, pOrN):
+        # box's center movements
+        deltaCs = []
+        # box's edge movements
+        deltaEs = []
+        for d in range(self.max_step):
+            deltaC = []
+            deltaE = []
+            for j in range(self.A.shape[0]):
+                t = np.zeros(self.A.shape)
+                for i in range(len(pOrN)):
+                    t += self.A_i[i] * pOrN[-i]
+                t = 0.5 * self.A_i[d] @ t
+                t = t.T @ self.l[j]
+                deltaC.append(t)
+
+                s = np.zeros(self.A.shape)
+
+                s = 0.5 * self.A_i[d].T
+                sum_A_i = np.zeros(self.A.shape)
+                for i in range(len(pOrN)):
+                    sum_A_i += self.A_i[i]
+
+
+
+
+
+
+
+
+
