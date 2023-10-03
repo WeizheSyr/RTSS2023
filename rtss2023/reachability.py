@@ -3,7 +3,7 @@ from utils.formal.zonotope import Zonotope
 import time
 
 class Reachability:
-    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=20):
+    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=25):
         self.A = A
         self.B = B
         self.P = P
@@ -49,6 +49,8 @@ class Reachability:
         # time
         self.timeIntersection = 0
         self.numIntersection = 0
+        self.timeAdjust = 0
+        self.numAdjust = 0
 
     # zonotope E
     def reach_E(self):
@@ -167,6 +169,7 @@ class Reachability:
         new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
 
         start = self.E[d].c
+        next = start
         center = (new_lo + new_up) / 2
         dir = np.zeros(ord)
         move = np.zeros(ord)
@@ -219,7 +222,7 @@ class Reachability:
                 else:
                     break
             i += 1
-        return 0, np.zeros(self.A.shape[0]), iteration
+        return 0, self.adjustDir(new_lo, new_up, next), iteration
 
     # projection of the line to the generator
     def getT(self, a, b):
@@ -295,7 +298,7 @@ class Reachability:
             return 0
 
     def adjustDir(self, D_lo, D_up, point):
-        adjustDir = np.zeros(self.A.shape)
+        adjustDir = np.zeros(self.A.shape[0])
         for i in range(self.A.shape[0]):
             if point[i] <= D_lo[i]:
                 adjustDir[i] = point[i] - D_lo[i]
@@ -305,6 +308,8 @@ class Reachability:
 
 
     def adjustTau(self, pOrN, start, end):
+        self.numAdjust += 1
+        startTime = time.time()
         # box's center movements
         deltaCs = []
         # box's edge movements
@@ -339,8 +344,18 @@ class Reachability:
         self.deltaCs = deltaCs
         self.deltaEs = deltaEs
 
-        objStep = start - 1
-        deltaTau = self.getDeltaTau(objStep)
+        if start != 0:
+            objStep = start - 1
+            deltaTau = self.getDeltaTau(objStep)
+        else:
+            objStep = self.max_step - 1
+            for i in range(self.max_step):
+                if np.any(self.adjustDirs[-1]):
+                    objStep = self.max_step - i - 1
+            deltaTau = self.getDeltaTau(objStep)
+        endTime = time.time()
+        self.timeAdjust += endTime - startTime
+        print("avg adjust time: ", self.timeAdjust / self.numAdjust)
         return deltaTau
 
     def getSNorm(self, D: Zonotope):
@@ -360,8 +375,42 @@ class Reachability:
 
     def getDeltaTau(self, d):
         deltaTau = np.zeros(self.A.shape[0])
+        adjustDim = np.zeros(self.A.shape[0])
+
+        for i in range(self.A.shape[0]):
+            if self.adjustDirs[d][i] != 0:
+                adjustDim[i] = 1
+        numDim = int(np.sum(adjustDim))
+
+        # number of coefficient = number of dimension which need to be adjusted
+        coefficient = np.zeros([numDim, numDim])
+        newAdjustDir = np.zeros(numDim)
+        k = 0
+        for i in range(self.A.shape[0]):
+            # delta C + delta E
+            if self.adjustDirs[d][i] > 0:
+                newAdjustDir[k] = self.adjustDirs[d][i]
+                for j in range(numDim):
+                    coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
+            # delta C - delta E
+            elif self.adjustDirs[d][i] < 0:
+                newAdjustDir[k] = self.adjustDirs[d][i]
+                for j in range(numDim):
+                    coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
+        result = np.linalg.pinv(coefficient) @ newAdjustDir
+        k = 0
+        for i in range(self.A.shape[0]):
+            if adjustDim[i] == 0:
+                deltaTau[i] = 0
+            else:
+                deltaTau[i] = result[k]
+                k += 1
+
         return deltaTau
 
+    def getDeltaTauNew(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        return deltaTau
 
 
 
