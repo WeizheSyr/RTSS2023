@@ -203,9 +203,14 @@ class SystemALLDim:
                 print('recovery-ability: ', self.klevels[-1])
 
                 while(True):
-                    if self.klevels[-1] - self.klevel < 0:
+                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 2:
                         print("adjust threshold")
-                        delta_tau = self.reach.adjustTau(self.pOrN, start_step, end_step)
+                        if self.klevels[-1] - self.klevel < 0:
+                            inOrDe = 0
+                        else:
+                            inOrDe = 1
+                        delta_tau = self.reach.adjustTau(self.pOrN, start_step, end_step, inOrDe)
+                        # delta_tau = self.reach.adjustTau(self.pOrN, start_step, end_step)
                         print("delta tao", delta_tau)
                         self.detector.adjust(delta_tau)
                         self.taos[-1] = deepcopy(self.detector.tao)
