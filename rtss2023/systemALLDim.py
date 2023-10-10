@@ -45,7 +45,7 @@ class SystemALLDim:
         self.pOrN = None
 
         # recovery-ability
-        self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
+        self.pz = Zonotope.from_box(np.ones(7) * -0.001, np.ones(7) * 0.001)    # process noise
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
         self.uz = Zonotope.from_box(np.ones(4) * -1.5, np.ones(4) * 1.5)
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
@@ -106,6 +106,7 @@ class SystemALLDim:
             self.taos.append(temp)
             if alarm:
                 print("alarm at", exp.model.cur_index)
+                # self.detector.continueWork()
                 return
             # if self.i >= 200:
             if self.i >= 50:
@@ -222,6 +223,7 @@ class SystemALLDim:
                     alarm = self.detector.alarmOrN()
                     if alarm:
                         print("alarm at", exp.model.cur_index)
+                        # self.detector.continueWork()
                         return
 
                     for k in range(5 + justAuth):

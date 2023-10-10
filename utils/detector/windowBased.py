@@ -10,6 +10,7 @@ class window:
         self.results = np.zeros(m)
         # self.results = [0] * m  # detection results in this timestep
         self.rsum = np.zeros(m)
+        self.residuals = None
         # self.rsum = [0] * m     # sum of residual for each dimension
 
     # residual: residual data for this dimension
@@ -36,6 +37,7 @@ class window:
 
     # residuals: residual data for all dimension in this timestep
     def detect(self, residuals):
+        self.residuals = residuals
         for i in range(self.m):
             self.results[i] = self.detectOneDim(residuals[i], i)
         return self.results
@@ -67,4 +69,12 @@ class window:
     def minTau(self):
         t = np.array(self.tao)
         return np.argmin(t)
+
+    def continueWork(self):
+        for i in range(self.m):
+            if self.detectOneDim(self.residuals[i], i):
+                self.tao[i] = sum(self.queue[i])
+
+
+
 

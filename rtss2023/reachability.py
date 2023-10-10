@@ -503,20 +503,33 @@ class Reachability:
                 objStep = start - 1
                 deltaTau = self.getDeltaTauIncreaseK(objStep)
             else:
-                objStep = self.max_step - 1
+                objStep = 0
+                # objStep = self.max_step - 1
                 exist = 0
                 for i in range(self.max_step):
+                    # Probable intersection
                     if np.any(self.inOrOuts[i]):
                         objStep = i
                         exist = 1
                         # break
-                # if exist == 0:
-                for i in range(self.max_step):
-                    if i <= objStep:
-                        continue
-                    if np.any(self.adjustDirs[i]):
-                        objStep = i
-                        break
+                if exist == 0:
+                    for i in range(self.max_step):
+                        if np.any(self.adjustDirs[i]) and self.emptySet[i] == 0:
+                            objStep = i
+                    if objStep == 0:
+                        for i in range(self.max_step):
+                            if i <= objStep:
+                                continue
+                            # empty set
+                            if np.any(self.adjustDirs[i]) and self.emptySet[i] == 1:
+                                objStep = i
+                                break
+                    # # Impossible to intersect
+                    # if objStep == 0:
+                    #     for i in range(self.max_step):
+                    #         if np.any(self.adjustDirs[i]) and self.emptySet[i] == 0:
+                    #             objStep = i
+
                 # deltaTau = self.getDeltaTau(objStep)
                 deltaTau = self.getDeltaTauIncreaseK(objStep)
         else:
@@ -604,21 +617,38 @@ class Reachability:
     # get delta tau for increasing recoveryability k
     def getDeltaTauIncreaseK(self, d):
         deltaTau = np.zeros(self.A.shape[0])
-
-        numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
-        numDim = int(numDim)
-        adjustDim = []
         print("inOrOuts", self.inOrOuts[d])
         print("self.adjustDirs[d]", self.adjustDirs[d])
+        print("empty set", self.emptySet[d])
         if not np.any(self.inOrOuts[d]):
             print("no in")
-        # if not np.any(self.inOrOuts[d]):
-        #     for i in range(self.A.shape[0]):
+        if np.sum(self.inOrOuts[d]) != 0:
+            numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+            numDim = int(numDim)
+            adjustDim = []
+            # if not np.any(self.inOrOuts[d]):
+            #     for i in range(self.A.shape[0]):
 
-        for i in range(self.A.shape[0]):
-            if self.inOrOuts[d][i] == 0:
-                adjustDim.append(i)
-        adjustDim = np.array(adjustDim)
+            for i in range(self.A.shape[0]):
+                if self.inOrOuts[d][i] == 0:
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+        # elif self.emptySet[d] == 1:
+        #     numDim = 1
+        #     adjustDim = []
+        #     for i in range(self.A.shape[0]):
+        #         if self.adjustDirs[d][i] != 0:
+        #             adjustDim.append(i)
+        #             break
+        else:
+            numDim = 0
+            adjustDim = []
+            for i in range(self.A.shape[0]):
+                if self.adjustDirs[d][i] != 0:
+                    numDim += 1
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+
 
         # number of coefficient = number of dimension which need to be adjusted
         coefficient = np.zeros([numDim, numDim])
@@ -640,13 +670,15 @@ class Reachability:
                     coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] - self.deltaEs[d][i][adjustDim[j]]
                 k += 1
         result = np.linalg.pinv(coefficient) @ newAdjustDir
-        k = 0
-        for i in range(self.A.shape[0]):
-            if self.inOrOuts[d][i] == 1:
-                deltaTau[i] = 0
-            else:
-                deltaTau[i] = result[k]
-                k += 1
+        for i in range(np.shape(result)[0]):
+            deltaTau[adjustDim[i]] = result[i]
+        # k = 0
+        # for i in range(self.A.shape[0]):
+        #     if self.inOrOuts[d][i] == 1:
+        #         deltaTau[i] = 0
+        #     else:
+        #         deltaTau[i] = result[k]
+        #         k += 1
 
 
         return deltaTau
@@ -691,12 +723,25 @@ class Reachability:
             coefficients = np.array(self.deltaCs[d][supDim]) + np.array(self.deltaEs[d][supDim])
         coefficient = np.sum(coefficients)
         print("coefficients", coefficients)
+        adjustDims = []
+        coefficient = 0
         if self.adjustDirs[d][supDim] > 0:
             adjustDim = np.argmax(coefficients)
+            # for i in range(self.A.shape[0]):
+            #     if coefficients[i] > 0:
+            #         adjustDims.append(i)
+            #         coefficient += coefficients[i]
         else:
             adjustDim = np.argmin(coefficients)
+            # for i in range(self.A.shape[0]):
+            #     if coefficients[i] < 0:
+            #         adjustDims.append(i)
+            #         coefficient += coefficients[i]
         delta = self.adjustDirs[d][supDim] / coefficients[adjustDim]
+        # delta = self.adjustDirs[d][supDim] / coefficient
         deltaTau[adjustDim] = delta
+        # for i in range(len(adjustDims)):
+        #     deltaTau[i] = delta
         # tau + deltaTau
         return deltaTau
 
@@ -731,6 +776,8 @@ class Reachability:
                 adjustDir[i] = E_up[i] - D_lo[i]
             elif D_up[i] <= E_lo[i]:
                 adjustDir[i] = E_lo[i] - D_up[i]
+            if -0.001 < adjustDir[i] < 0.001:
+                adjustDir[i] = 0
             scope[i] = adjustDir[i] / (D_up[i] - D_lo[i])
 
         return adjustDir, inOrOut, scope
