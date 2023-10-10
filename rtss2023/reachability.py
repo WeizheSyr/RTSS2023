@@ -47,6 +47,7 @@ class Reachability:
         self.deltaEs = None
         self.inOrOuts = None     # 0: out, 1: in
         self.scopes = None
+        self.detector = None
 
         # time
         self.timeIntersection = 0
@@ -131,11 +132,11 @@ class Reachability:
         iterations = []
         startTime = time.time()
         for i in range(self.max_step):
-            ks[i], adjustDir, iteration = self.check_intersection(i)
-            # ks[i], adjustDir, inOrOut, scope, iteration = self.check_intersection(i)
+            # ks[i], adjustDir, iteration = self.check_intersection(i)
+            ks[i], adjustDir, inOrOut, scope, iteration = self.check_intersectionNew(i)
             adjustDirs.append(adjustDir)
-            # inOrOuts.append(inOrOut)
-            # scopes.append(scope)
+            inOrOuts.append(inOrOut)
+            scopes.append(scope)
             iterations.append(iteration)
             # print("i", i, "ks[i]", ks[i])
         self.adjustDirs = adjustDirs
@@ -174,8 +175,8 @@ class Reachability:
 
         # pre-check before explore
         if self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d]):
-            return 0, np.zeros(self.A.shape[0]), 0
-            # return 0, np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), 0
+            # return 0, np.zeros(self.A.shape[0]), 0
+            return 0, np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), 0
         new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
 
         start = self.E[d].c
@@ -214,8 +215,9 @@ class Reachability:
                 re = self.checkinBox(new_lo, new_up, next)
                 if re == 1:
                     # print("intersect point", next)
-                    return 1, self.adjustDir(new_lo, new_up, next), iteration
-                    # return 1, self.adjustDirNew(new_lo, new_up, next), iteration
+                    # return 1, self.adjustDir(new_lo, new_up, next), iteration
+                    adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+                    return 1, adjustDir, inOrOut, scope, iteration
                 # f_low, f_up, signal = checkPass(start, next, box.c, boxG)
                 # if signal != -1:
                 #     # print("pass intersection", start, next)
@@ -225,7 +227,7 @@ class Reachability:
             if i == ord - 1:
                 # print("one iteration")
                 iteration += 1
-                if iteration >= 20:
+                if iteration >= 50:
                     break
                 if usedout == 0:
                     i = -1
@@ -233,8 +235,80 @@ class Reachability:
                 else:
                     break
             i += 1
-        return 0, self.adjustDir(new_lo, new_up, next), iteration
-        # return 0, self.adjustDirNew(new_lo, new_up, next), iteration
+        # return 0, self.adjustDir(new_lo, new_up, next), iteration
+        adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+        return 0, adjustDir, inOrOut, scope, iteration
+
+    def check_intersectionNew(self, d):
+        ord = self.E[d].g.shape[1]
+
+        # pre-check before explore
+        if self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d]):
+            # return 0, np.zeros(self.A.shape[0]), 0
+            return 0, np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), 0
+        new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+
+        start = self.E[d].c
+        next = start
+        center = (new_lo + new_up) / 2
+        dir = np.zeros(ord)
+        move = np.zeros(ord)
+        usedout = 1
+        i = 0
+        iteration = 0
+        result = 0
+
+        while i < ord:
+            # t = self.getT(self.closestPoint(new_lo, new_up, start) - start, self.E[d].g[:, i])
+            t = self.getT(center - start, self.E[d].g[:, i])
+            # t = getT(box.c - start, temp.g[:, i])
+            # print("t", t)
+            if not self.newEqual(t, 0):
+                # usedout = 0
+                if t + dir[i] >= 1:
+                    move[i] = 1 - dir[i]
+                    dir[i] = 1
+                elif t + dir[i] <= -1:
+                    move[i] = -1 - dir[i]
+                    dir[i] = -1
+                elif -1 <= t + dir[i] <= 1:
+                    move[i] = t
+                    dir[i] = t + dir[i]
+                # print("dir", i, dir[i])
+                # print("move", move[i])
+                if not self.newEqual(move[i], 0):
+                    usedout = 0
+                next = start + move[i] * self.E[d].g[:, i]
+                # print(next)
+                # distance = np.linalg.norm(next - closestPoint(new_low, new_up, next))
+                # print("distance", distance)
+                re = self.checkinBox(new_lo, new_up, next)
+                if re == 1:
+                    # print("intersect point", next)
+                    # return 1, self.adjustDir(new_lo, new_up, next), iteration
+                    result = 1
+                    # adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+                    # return 1, adjustDir, inOrOut, scope, iteration
+                # f_low, f_up, signal = checkPass(start, next, box.c, boxG)
+                # if signal != -1:
+                #     # print("pass intersection", start, next)
+                #     break
+                start = next
+
+            if i == ord - 1:
+                # print("one iteration")
+                iteration += 1
+                if iteration >= 50:
+                    break
+                if usedout == 0:
+                    i = -1
+                    usedout = 1
+                else:
+                    break
+            i += 1
+        # return 0, self.adjustDir(new_lo, new_up, next), iteration
+        adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+        return result, adjustDir, inOrOut, scope, iteration
 
     # projection of the line to the generator
     def getT(self, a, b):
@@ -258,10 +332,12 @@ class Reachability:
     def checkinBox(self, low, up, point):
         result = 1
         for i in range(low.shape[0]):
-            if point[i] <= low[i] - 0.001:
+            # if point[i] <= low[i] - 0.001:
+            if point[i] <= low[i]:
                 result = 0
                 return result
-            if point[i] >= up[i] + 0.001:
+            # if point[i] >= up[i] + 0.001:
+            if point[i] >= up[i]:
                 result = 0
                 return result
         return result
@@ -319,7 +395,7 @@ class Reachability:
         return adjustDir
 
     # inOrDe 0: decrease, 1: increase
-    def adjustTau(self, pOrN, start, end, inOrDe):
+    def adjustTau(self, pOrN, start, end):
         self.numAdjust += 1
         startTime = time.time()
         # box's center movements
@@ -366,6 +442,66 @@ class Reachability:
                     objStep = i
             # deltaTau = self.getDeltaTau(objStep)
             deltaTau = self.getDeltaTau(objStep)
+        endTime = time.time()
+        self.timeAdjust += endTime - startTime
+        print("avg adjust time: ", self.timeAdjust / self.numAdjust)
+        return deltaTau
+
+    def adjustTauNew(self, pOrN, start, end, inOrDe, detector):
+        self.detector = detector
+        self.numAdjust += 1
+        startTime = time.time()
+        # box's center movements
+        deltaCs = []
+        # box's edge movements
+        deltaEs = []
+        # corresponding steps
+        for d in range(self.max_step):
+            deltaC = []
+            deltaE = []
+            # corresponding support vectors
+            for j in range(self.A.shape[0]):
+                t = np.zeros(self.A.shape)
+                for i in range(len(pOrN)):
+                    t += self.A_i[i] * pOrN[-i]
+                t = 0.5 * self.A_i[d] @ t
+                t = t.T @ self.l[j]
+                deltaC.append(t.T)
+
+                # select one column in 1/2 A_i
+                b = (0.5 * self.A_i[d].T)[:, j]
+                # corresponding generators
+                for i in range(self.A.shape[0]):
+                    b[i] = b[i] * self.sNorm[d][j][i]
+                sum_A_i = np.zeros(self.A.shape)
+                for i in range(len(pOrN)):
+                    sum_A_i += self.A_i[i]
+                # select one row in sum_A_i
+                a = sum_A_i[j]
+                deltaE.append(np.sum(b) * a)
+            deltaCs.append(deltaC)
+            deltaEs.append(deltaE)
+
+        self.deltaCs = deltaCs
+        self.deltaEs = deltaEs
+
+        if inOrDe == 0:
+            # increase k
+            if start != 0:
+                objStep = start - 1
+                deltaTau = self.getDeltaTauIncreaseK(objStep)
+            else:
+                objStep = self.max_step - 1
+                for i in range(self.max_step):
+                    if np.any(self.adjustDirs[i]):
+                        objStep = i
+                # deltaTau = self.getDeltaTau(objStep)
+                deltaTau = self.getDeltaTauIncreaseK(objStep)
+        else:
+            # decrease k
+            objStep = start + 1
+            deltaTau = self.getDeltaTauDecreaseK(objStep)
+
         endTime = time.time()
         self.timeAdjust += endTime - startTime
         print("avg adjust time: ", self.timeAdjust / self.numAdjust)
@@ -423,33 +559,37 @@ class Reachability:
 
         return deltaTau
 
-    def getDeltaTauNew(self, d):
-        deltaTau = np.zeros(self.A.shape[0])
-
-        coefficient = np.zeros(self.A.shape)
-        for i in range(self.A.shape[0]):
-            if self.adjustDirs[d][i] >= 0 and self.inOrOut[i] == 0:
-                coefficient[i] = self.deltaCs[d][i] + self.deltaEs[d][i]
-            elif self.adjustDirs[d][i] <= 0 and self.inOrOut[i] == 0:
-                coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
-            elif self.adjustDirs[d][i] > 0 and self.inOrOut[i] == 1:
-                coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
-            elif self.adjustDirs[d][i] < 0 and self.inOrOut[i] == 1:
-                coefficient[i] = self.deltaCs[d][i] + self.deltaEs[d][i]
-
-        deltaTau = np.linalg.pinv(coefficient) @ self.adjustDirs[d]
-
-        return deltaTau
+    # def getDeltaTauNew(self, d):
+    #     deltaTau = np.zeros(self.A.shape[0])
+    #
+    #     coefficient = np.zeros(self.A.shape)
+    #     for i in range(self.A.shape[0]):
+    #         if self.adjustDirs[d][i] >= 0 and self.inOrOut[i] == 0:
+    #             coefficient[i] = self.deltaCs[d][i] + self.deltaEs[d][i]
+    #         elif self.adjustDirs[d][i] <= 0 and self.inOrOut[i] == 0:
+    #             coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
+    #         elif self.adjustDirs[d][i] > 0 and self.inOrOut[i] == 1:
+    #             coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
+    #         elif self.adjustDirs[d][i] < 0 and self.inOrOut[i] == 1:
+    #             coefficient[i] = self.deltaCs[d][i] + self.deltaEs[d][i]
+    #
+    #     deltaTau = np.linalg.pinv(coefficient) @ self.adjustDirs[d]
+    #
+    #     return deltaTau
 
     # get delta tau for increasing recoveryability k
     def getDeltaTauIncreaseK(self, d):
         deltaTau = np.zeros(self.A.shape[0])
-        adjustDim = np.zeros(self.A.shape[0])
 
+        numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+        numDim = int(numDim)
+        adjustDim = []
+        print("inOrOuts", self.inOrOuts[d])
+        print("self.adjustDirs[d]", self.adjustDirs[d])
         for i in range(self.A.shape[0]):
             if self.inOrOuts[d][i] == 0:
-                adjustDim[i] = 1
-        numDim = int(np.sum(adjustDim))
+                adjustDim.append(i)
+        adjustDim = np.array(adjustDim)
 
         # number of coefficient = number of dimension which need to be adjusted
         coefficient = np.zeros([numDim, numDim])
@@ -457,21 +597,23 @@ class Reachability:
         k = 0
         for i in range(self.A.shape[0]):
             # delta C + delta E
-            if self.adjustDirs[d][i] > 0 and self.inOrOuts == 0:
+            if self.adjustDirs[d][i] > 0 and self.inOrOuts[d][i] == 0:
                 newAdjustDir[k] = self.adjustDirs[d][i]
                 for j in range(numDim):
                     # coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
-                    coefficient[k][j] = self.deltaCs[d][i][j] - self.deltaEs[d][i][j]
+                    coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] + self.deltaEs[d][i][adjustDim[j]]
+                k += 1
             # delta C - delta E
-            elif self.adjustDirs[d][i] < 0 and self.inOrOuts == 0:
+            elif self.adjustDirs[d][i] < 0 and self.inOrOuts[d][i] == 0:
                 newAdjustDir[k] = self.adjustDirs[d][i]
                 for j in range(numDim):
                     # coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
-                    coefficient[k][j] = self.deltaCs[d][i][j] + self.deltaEs[d][i][j]
+                    coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] - self.deltaEs[d][i][adjustDim[j]]
+                k += 1
         result = np.linalg.pinv(coefficient) @ newAdjustDir
         k = 0
         for i in range(self.A.shape[0]):
-            if adjustDim[i] == 0:
+            if self.inOrOuts[d][i] == 1:
                 deltaTau[i] = 0
             else:
                 deltaTau[i] = result[k]
@@ -483,8 +625,14 @@ class Reachability:
     # get delta tau for decreasing recoveryability k
     # only adjust one dimension
     def getDeltaTauDecreaseK(self, d):
+        print("self.adjustDirs[d]", self.adjustDirs[d])
         deltaTau = np.zeros(self.A.shape[0])
         supDim = np.argmin(self.scopes[d])
+        argminTau = self.detector.minTau()
+        if supDim == argminTau and self.detector.tao[argminTau] <= 0.032/2:
+            t = self.scopes[d]
+            t[supDim] = 100
+            supDim = np.argmin(t)
 
         coefficient = np.zeros(self.A.shape[0])
         if self.adjustDirs[d][supDim] > 0:
@@ -494,7 +642,7 @@ class Reachability:
         t = coefficient
         for i in range(self.A.shape[0]):
             t[i] = np.abs(t[i])
-        adjustDim = np.argmin(t)
+        adjustDim = np.argmax(t)
         deltaTau[adjustDim] = self.adjustDirs[d][supDim] / coefficient[adjustDim]
         return deltaTau
 
@@ -517,6 +665,5 @@ class Reachability:
                     adjustDir[i] = point[i] - D_up[i]
             scope[i] = np.abs(adjustDir[i]) / (D_up[i] - D_lo[i])
         return adjustDir, inOrOut, scope
-
 
 

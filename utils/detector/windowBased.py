@@ -56,6 +56,15 @@ class window:
     #         self.tao[i] = self.tao[i] + self.tao[i] * delta_theta[i]
     #     # print("new tao", self.tao)
 
-    def adjust(self, delta_tau):
-        for i in range(self.m):
-            self.tao[i] = self.tao[i] + delta_tau[i]
+    def adjust(self, delta_tau, inOrDe):
+        if inOrDe == 0:
+            for i in range(self.m):
+                self.tao[i] = self.tao[i] - delta_tau[i]
+        else:
+            for i in range(self.m):
+                self.tao[i] = self.tao[i] + delta_tau[i]
+
+    def minTau(self):
+        t = np.array(self.tao)
+        return np.argmin(t)
+
