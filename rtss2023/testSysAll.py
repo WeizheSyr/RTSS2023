@@ -4,7 +4,7 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-tao = np.ones(7) * 0.032
+tao = np.ones(7) * 0.028
 # tao = [0.5] * 7
 detector = window(tao, 7, 10)
 exp = Platoon
@@ -43,7 +43,7 @@ plt.plot(x_up, c='red', linestyle=':', label='x_up')
 plt.plot(x_tilda_arr, c='blue', linestyle=':', label='x_tilda_arr')
 
 plt.subplot(3, 2, 2)
-plt.plot(reach, c='blue', linestyle=':', label='x_tilda_arr')
+plt.plot(reach[0:-1], c='blue', linestyle=':', label='x_tilda_arr')
 
 plt.subplot(3, 2, 3)
 plt.plot(tao_arr0, c='blue', linestyle=':', label='tao')

@@ -48,6 +48,7 @@ class Reachability:
         self.inOrOuts = None     # 0: out, 1: in
         self.scopes = None
         self.detector = None
+        self.emptySet = np.zeros(self.max_step)
 
         # time
         self.timeIntersection = 0
@@ -131,6 +132,7 @@ class Reachability:
         inOrOuts = []
         iterations = []
         startTime = time.time()
+        self.emptySet = np.zeros(self.max_step)
         for i in range(self.max_step):
             # ks[i], adjustDir, iteration = self.check_intersection(i)
             ks[i], adjustDir, inOrOut, scope, iteration = self.check_intersectionNew(i)
@@ -242,10 +244,16 @@ class Reachability:
     def check_intersectionNew(self, d):
         ord = self.E[d].g.shape[1]
 
+        t = self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
         # pre-check before explore
-        if self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d]):
-            # return 0, np.zeros(self.A.shape[0]), 0
-            return 0, np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), 0
+        if t == -1:
+            adjustDir = self.emtpySetDir(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+            self.emptySet[d] = 1
+            # return 0, adjustDir, inOrOut, scope, 0
+            return 0, adjustDir, np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), 0
+        elif t == 1:
+            adjustDir, inOrOut, scope = self.adjustDirsNN(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+            return 0, adjustDir, inOrOut, scope, 0
         new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
 
         start = self.E[d].c
@@ -308,6 +316,10 @@ class Reachability:
             i += 1
         # return 0, self.adjustDir(new_lo, new_up, next), iteration
         adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+        # for i in range(self.A.shape[0]):
+        #     if -0.0001 < adjustDir[i] < 0.0001:
+        #         adjustDir[i] = 0
+        #         result = 1
         return result, adjustDir, inOrOut, scope, iteration
 
     # projection of the line to the generator
@@ -333,11 +345,11 @@ class Reachability:
         result = 1
         for i in range(low.shape[0]):
             # if point[i] <= low[i] - 0.001:
-            if point[i] <= low[i]:
+            if point[i] <= low[i] - 0.001:
                 result = 0
                 return result
             # if point[i] >= up[i] + 0.001:
-            if point[i] >= up[i]:
+            if point[i] >= up[i] + 0.001:
                 result = 0
                 return result
         return result
@@ -352,7 +364,7 @@ class Reachability:
         for i in range(self.A.shape[0]):
             # empty set
             if D_lo[i] >= D_up[i]:
-                return 1
+                return -1
             # impossible intersection
             if D_lo[i] >= E_up[i] or D_up[i] <= E_lo[i]:
                 return 1
@@ -492,20 +504,32 @@ class Reachability:
                 deltaTau = self.getDeltaTauIncreaseK(objStep)
             else:
                 objStep = self.max_step - 1
+                exist = 0
                 for i in range(self.max_step):
+                    if np.any(self.inOrOuts[i]):
+                        objStep = i
+                        exist = 1
+                        # break
+                # if exist == 0:
+                for i in range(self.max_step):
+                    if i <= objStep:
+                        continue
                     if np.any(self.adjustDirs[i]):
                         objStep = i
+                        break
                 # deltaTau = self.getDeltaTau(objStep)
                 deltaTau = self.getDeltaTauIncreaseK(objStep)
         else:
             # decrease k
             objStep = start + 1
-            deltaTau = self.getDeltaTauDecreaseK(objStep)
+            # objStep = end - 6
+            deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
 
         endTime = time.time()
         self.timeAdjust += endTime - startTime
         print("avg adjust time: ", self.timeAdjust / self.numAdjust)
         return deltaTau
+
 
     def getSNorm(self, D: Zonotope):
         sNorms = []
@@ -586,6 +610,11 @@ class Reachability:
         adjustDim = []
         print("inOrOuts", self.inOrOuts[d])
         print("self.adjustDirs[d]", self.adjustDirs[d])
+        if not np.any(self.inOrOuts[d]):
+            print("no in")
+        # if not np.any(self.inOrOuts[d]):
+        #     for i in range(self.A.shape[0]):
+
         for i in range(self.A.shape[0]):
             if self.inOrOuts[d][i] == 0:
                 adjustDim.append(i)
@@ -629,10 +658,6 @@ class Reachability:
         deltaTau = np.zeros(self.A.shape[0])
         supDim = np.argmin(self.scopes[d])
         argminTau = self.detector.minTau()
-        if supDim == argminTau and self.detector.tao[argminTau] <= 0.032/2:
-            t = self.scopes[d]
-            t[supDim] = 100
-            supDim = np.argmin(t)
 
         coefficient = np.zeros(self.A.shape[0])
         if self.adjustDirs[d][supDim] > 0:
@@ -643,7 +668,36 @@ class Reachability:
         for i in range(self.A.shape[0]):
             t[i] = np.abs(t[i])
         adjustDim = np.argmax(t)
+        if adjustDim == argminTau and self.detector.tao[argminTau] <= 0.032/2:
+            t[adjustDim] = 0
+            adjustDim = np.argmax(t)
         deltaTau[adjustDim] = self.adjustDirs[d][supDim] / coefficient[adjustDim]
+        return deltaTau
+
+    def getDeltaTauDecreaseKAllDim(self, d):
+        print("self.adjustDirs[d]", self.adjustDirs[d])
+        deltaTau = np.zeros(self.A.shape[0])
+        f = self.adjustDirs[d]
+        for i in range(self.A.shape[0]):
+            f[i] = np.abs(self.adjustDirs[d][i])
+        # supDim = np.argmin(self.scopes[d])
+        supDim = np.argmin(f)
+        print("self.adjustDirs[d][supDim]", self.adjustDirs[d][supDim])
+        print("supdim", supDim)
+        coefficients = np.zeros(self.A.shape[0])
+        if self.adjustDirs[d][supDim] > 0:
+            coefficients = np.array(self.deltaCs[d][supDim]) - np.array(self.deltaEs[d][supDim])
+        elif self.adjustDirs[d][supDim] < 0:
+            coefficients = np.array(self.deltaCs[d][supDim]) + np.array(self.deltaEs[d][supDim])
+        coefficient = np.sum(coefficients)
+        print("coefficients", coefficients)
+        if self.adjustDirs[d][supDim] > 0:
+            adjustDim = np.argmax(coefficients)
+        else:
+            adjustDim = np.argmin(coefficients)
+        delta = self.adjustDirs[d][supDim] / coefficients[adjustDim]
+        deltaTau[adjustDim] = delta
+        # tau + deltaTau
         return deltaTau
 
     def adjustDirNew(self, D_lo, D_up, point):
@@ -667,3 +721,24 @@ class Reachability:
         return adjustDir, inOrOut, scope
 
 
+    def adjustDirsNN(self, D_lo, D_up, E_lo, E_up):
+        adjustDir = np.zeros(self.A.shape[0])
+        inOrOut = np.zeros(self.A.shape[0])
+        scope = np.zeros(self.A.shape[0])
+
+        for i in range(self.A.shape[0]):
+            if D_lo[i] >= E_up[i]:
+                adjustDir[i] = E_up[i] - D_lo[i]
+            elif D_up[i] <= E_lo[i]:
+                adjustDir[i] = E_lo[i] - D_up[i]
+            scope[i] = adjustDir[i] / (D_up[i] - D_lo[i])
+
+        return adjustDir, inOrOut, scope
+
+    def emtpySetDir(self, D_lo, D_up, E_lo, E_up):
+        adjustDir = np.zeros(self.A.shape[0])
+
+        for i in range(self.A.shape[0]):
+            if D_lo[i] > D_up[i]:
+                adjustDir[i] = D_up[i] - D_lo[i]
+        return adjustDir

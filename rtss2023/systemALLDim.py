@@ -108,7 +108,7 @@ class SystemALLDim:
                 print("alarm at", exp.model.cur_index)
                 return
             # if self.i >= 200:
-            if self.i >= 80:
+            if self.i >= 50:
                 return
 
             # authentication
