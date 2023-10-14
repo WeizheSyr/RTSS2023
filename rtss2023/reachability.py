@@ -671,6 +671,8 @@ class Reachability:
                     adjustDim.append(i)
             adjustDim = np.array(adjustDim)
 
+        # WORKING ON THAT
+
     # get delta tau for decreasing recoveryability k
     # only adjust one dimension
     def getDeltaTauDecreaseK(self, d):
