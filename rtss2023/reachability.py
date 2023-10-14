@@ -596,24 +596,6 @@ class Reachability:
 
         return deltaTau
 
-    # def getDeltaTauNew(self, d):
-    #     deltaTau = np.zeros(self.A.shape[0])
-    #
-    #     coefficient = np.zeros(self.A.shape)
-    #     for i in range(self.A.shape[0]):
-    #         if self.adjustDirs[d][i] >= 0 and self.inOrOut[i] == 0:
-    #             coefficient[i] = self.deltaCs[d][i] + self.deltaEs[d][i]
-    #         elif self.adjustDirs[d][i] <= 0 and self.inOrOut[i] == 0:
-    #             coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
-    #         elif self.adjustDirs[d][i] > 0 and self.inOrOut[i] == 1:
-    #             coefficient[i] = self.deltaCs[d][i] - self.deltaEs[d][i]
-    #         elif self.adjustDirs[d][i] < 0 and self.inOrOut[i] == 1:
-    #             coefficient[i] = self.deltaCs[d][i] + self.deltaEs[d][i]
-    #
-    #     deltaTau = np.linalg.pinv(coefficient) @ self.adjustDirs[d]
-    #
-    #     return deltaTau
-
     # get delta tau for increasing recoveryability k
     def getDeltaTauIncreaseK(self, d):
         deltaTau = np.zeros(self.A.shape[0])
@@ -626,20 +608,11 @@ class Reachability:
             numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
             numDim = int(numDim)
             adjustDim = []
-            # if not np.any(self.inOrOuts[d]):
-            #     for i in range(self.A.shape[0]):
 
             for i in range(self.A.shape[0]):
                 if self.inOrOuts[d][i] == 0:
                     adjustDim.append(i)
             adjustDim = np.array(adjustDim)
-        # elif self.emptySet[d] == 1:
-        #     numDim = 1
-        #     adjustDim = []
-        #     for i in range(self.A.shape[0]):
-        #         if self.adjustDirs[d][i] != 0:
-        #             adjustDim.append(i)
-        #             break
         else:
             numDim = 0
             adjustDim = []
@@ -648,7 +621,6 @@ class Reachability:
                     numDim += 1
                     adjustDim.append(i)
             adjustDim = np.array(adjustDim)
-
 
         # number of coefficient = number of dimension which need to be adjusted
         coefficient = np.zeros([numDim, numDim])
@@ -672,16 +644,32 @@ class Reachability:
         result = np.linalg.pinv(coefficient) @ newAdjustDir
         for i in range(np.shape(result)[0]):
             deltaTau[adjustDim[i]] = result[i]
-        # k = 0
-        # for i in range(self.A.shape[0]):
-        #     if self.inOrOuts[d][i] == 1:
-        #         deltaTau[i] = 0
-        #     else:
-        #         deltaTau[i] = result[k]
-        #         k += 1
-
-
         return deltaTau
+
+    def getDeltaTauIncreaseKNew(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        print("inOrOuts", self.inOrOuts[d])
+        print("self.adjustDirs[d]", self.adjustDirs[d])
+        print("empty set", self.emptySet[d])
+        if not np.any(self.inOrOuts[d]):
+            print("no in")
+        if np.sum(self.inOrOuts[d]) != 0:
+            numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+            numDim = int(numDim)
+            adjustDim = []
+
+            for i in range(self.A.shape[0]):
+                if self.inOrOuts[d][i] == 0:
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+        else:
+            numDim = 0
+            adjustDim = []
+            for i in range(self.A.shape[0]):
+                if self.adjustDirs[d][i] != 0:
+                    numDim += 1
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
 
     # get delta tau for decreasing recoveryability k
     # only adjust one dimension
@@ -745,6 +733,7 @@ class Reachability:
         # tau + deltaTau
         return deltaTau
 
+    # probably intersection
     def adjustDirNew(self, D_lo, D_up, point):
         adjustDir = np.zeros(self.A.shape[0])
         inOrOut = np.zeros(self.A.shape[0])
