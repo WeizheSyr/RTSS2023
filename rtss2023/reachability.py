@@ -486,7 +486,7 @@ class Reachability:
                 deltaTau = np.zeros(self.A.shape[0])
                 a = np.argmax(self.detector.tao)
                 if self.detector.tao[a] > self.detector.iniTao[a]:
-                    deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a])/2
+                    deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.7
                     return deltaTau
             # increase k
             if start != 0:
