@@ -1,11 +1,12 @@
 import numpy as np
-
+from copy import deepcopy
 
 class window:
     def __init__(self, tao, m=7, w=14):
         self.m = m              # dimension of states
         self.w = w              # observation window
         self.tao = tao          # threshold tao
+        self.iniTao = deepcopy(tao)
         self.queue = [[] for i in range(m)]
         self.results = np.zeros(m)
         # self.results = [0] * m  # detection results in this timestep

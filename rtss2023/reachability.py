@@ -485,8 +485,8 @@ class Reachability:
             # increase k
             if start != 0:
                 objStep = start - 1
-                # deltaTau = self.getDeltaTauIncreaseK(objStep)
-                deltaTau = self.getDeltaTauIncreaseKNew(objStep)
+                deltaTau = self.getDeltaTauIncreaseK(objStep)
+                # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
             else:
                 objStep = 0
                 # objStep = self.max_step - 1
@@ -516,13 +516,14 @@ class Reachability:
                     #             objStep = i
 
                 # deltaTau = self.getDeltaTau(objStep)
-                # deltaTau = self.getDeltaTauIncreaseK(objStep)
-                deltaTau = self.getDeltaTauIncreaseKNew(objStep)
+                deltaTau = self.getDeltaTauIncreaseK(objStep)
+                # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
         else:
             # decrease k
             objStep = start + 1
             # objStep = end - 6
             deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
+            # deltaTau = self.getDeltaTauDecreaseKNew(objStep)
 
         endTime = time.time()
         self.timeAdjust += endTime - startTime
@@ -749,6 +750,35 @@ class Reachability:
         #     deltaTau[i] = delta
         # tau + deltaTau
         return deltaTau
+
+    def getDeltaTauDecreaseKNew(self, d):
+        print("self.adjustDirs[d]", self.adjustDirs[d])
+
+        coefficients = []
+        for i in range(self.A.shape[0]):
+            if self.adjustDirs[d][i] > 0:
+                coefficients.append(np.array(self.deltaCs[d][i]) - np.array(self.deltaEs[d][i]))
+            elif self.adjustDirs[d][i] < 0:
+                coefficients.append(np.array(self.deltaCs[d][i]) + np.array(self.deltaEs[d][i]))
+        print(coefficients)
+        adjustDim = np.argmin(self.detector.tao)
+        adjSupDim = []
+        aftAdj = []
+        for i in range(self.A.shape[0]):
+            adjSupDim.append(self.adjustDirs[d][i] / coefficients[i][adjustDim])
+            if adjSupDim[i] <= 0:
+                aftAdj.append(100)
+            else:
+                aftAdj.append(abs(self.detector.tao[i] + adjSupDim[i] - self.detector.iniTao[i]))
+        supDim = np.argmin(aftAdj)
+        print("self.detector.iniTao", self.detector.iniTao)
+        print("adjSupDim", adjSupDim)
+        print("aftAdj", aftAdj)
+
+        deltaTau = np.zeros(self.A.shape[0])
+        deltaTau[adjustDim] = adjSupDim[supDim]
+        return deltaTau
+
 
     # probably intersection
     def adjustDirNew(self, D_lo, D_up, point):
