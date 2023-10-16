@@ -204,7 +204,7 @@ class SystemALLDim:
                 print('recovery-ability: ', self.klevels[-1])
 
                 while(True):
-                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
+                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 4:
                         print("adjust threshold")
                         if self.klevels[-1] - self.klevel < 0:
                             inOrDe = 0
