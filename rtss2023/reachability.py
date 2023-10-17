@@ -489,7 +489,7 @@ class Reachability:
                     # force decrease tau
                     deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.5
                     print("force decrease tau")
-                    print("tao", self.detector.tao)
+                    # print("tao", self.detector.tao)
                     return deltaTau
             # increase k
             if start != 0:
@@ -522,7 +522,7 @@ class Reachability:
                 # deltaTau = self.getDeltaTau(objStep)
                 deltaTau = self.getDeltaTauIncreaseK(objStep)
                 # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
-            print("objstep", objStep)
+            # print("objstep", objStep)
         else:
             # decrease k
             objStep = start + 1
@@ -532,7 +532,7 @@ class Reachability:
 
         endTime = time.time()
         self.timeAdjust += endTime - startTime
-        print("avg adjust time: ", self.timeAdjust / self.numAdjust)
+        # print("avg adjust time: ", self.timeAdjust / self.numAdjust)
         return deltaTau
 
 

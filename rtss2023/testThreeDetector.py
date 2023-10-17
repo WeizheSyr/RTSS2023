@@ -6,10 +6,10 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-tao = np.ones(7) * 0.1
+tao = np.ones(7) * 0.03
 # tao = [0.5] * 7
 detector = window(tao, 7, 10)
-fixed_tao = np.ones(7) * 0.1
+fixed_tao = np.ones(7) * 0.030
 fixed_detector = window(fixed_tao, 7, 10)
 noauth_detector = window(fixed_tao, 7, 10)
 exp = Platoon
@@ -46,8 +46,8 @@ else:
 for i in range(length):
     x_low.append(x_hat_arr[i] + sys.theta[i][dim][0])
     x_up.append(x_hat_arr[i] + sys.theta[i][dim][1])
-tao_arr0 = [x[0] for x in sys.taos[:length]]
-tao_arr1 = [x[4] for x in sys.taos[:length]]
+tao_arr0 = [x[1] for x in sys.taos[:length]]
+tao_arr1 = [x[2] for x in sys.taos[:length]]
 reach = [x for x in sys.klevels[:length]]
 
 fixed_x_low = []
@@ -56,8 +56,8 @@ for i in range(len(x_hat_arr) - 1):
     fixed_x_low.append(x_hat_arr[i] + sys.fixed_theta[i][dim][0])
     fixed_x_up.append(x_hat_arr[i] + sys.fixed_theta[i][dim][1])
 fixed_reach = [x for x in sys.fixed_klevels]
-fixed_tao_arr0 = [x[0] for x in sys.fixed_taos]
-fixed_tao_arr1 = [x[4] for x in sys.fixed_taos]
+fixed_tao_arr0 = [x[1] for x in sys.fixed_taos]
+fixed_tao_arr1 = [x[2] for x in sys.fixed_taos]
 
 noauth_x_low = []
 noauth_x_up = []

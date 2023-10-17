@@ -45,7 +45,7 @@ class SystemALLDim:
         self.pOrN = None
 
         # recovery-ability
-        self.pz = Zonotope.from_box(np.ones(7) * -0.001, np.ones(7) * 0.001)    # process noise
+        self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
         self.uz = Zonotope.from_box(np.ones(4) * -1.5, np.ones(4) * 1.5)
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
@@ -75,7 +75,6 @@ class SystemALLDim:
             self.index_list.append(exp.model.cur_index)
             self.reference_list.append(exp.ref[self.i])
             self.real_cur_y = exp.model.cur_y
-            # self.u.append(exp.cur_u)
             self.y.append(exp.model.cur_y)
             self.y_tilda.append(exp.model.cur_y)
             self.y_hat.append(exp.model.predict)
@@ -147,14 +146,7 @@ class SystemALLDim:
 
                 # update real state calculate
                 for k in range(5):
-                    # bound from system dynamic
-                    # theta2 = self.boundByDynamic(self.i - (6 - k), exp.model.inputs[exp.model.cur_index - (6 - k)])
-                    # bound from detector
                     theta1 = self.boundByDetector(self.i - 7 + k + 1)
-                    # combine bound
-                    # t = self.combineBound(theta1, theta2)
-                    # t = t.reshape(1, 7, 2)
-
                     t = theta1.reshape(1, 7, 2)     # only use detector estimation
 
                     # first time authentication
@@ -204,7 +196,7 @@ class SystemALLDim:
                 print('recovery-ability: ', self.klevels[-1])
 
                 while(True):
-                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 4:
+                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
                         print("adjust threshold")
                         if self.klevels[-1] - self.klevel < 0:
                             inOrDe = 0

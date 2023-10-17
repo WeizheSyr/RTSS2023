@@ -1,6 +1,7 @@
 import numpy as np
 from Authenticate import Authenticate
 from reachability1 import Reachability1
+from reachability import Reachability
 from utils.formal.zonotope import Zonotope
 from copy import deepcopy
 # from goto import with_goto
@@ -41,20 +42,21 @@ class ThreeDetector:
         self.detectResults = []
         self.detector = detector
         self.alarm_list = []
+        self.pOrN = None
 
         # recovery-ability
         self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
-        self.uz = Zonotope.from_box(np.ones(4) * -12, np.ones(4) * 12)
+        self.uz = Zonotope.from_box(np.ones(4) * -1, np.ones(4) * 1)
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1, 1]))
-        self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([1, 1, 1, 1, 1, 1, 1]))
+        # self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([1, 1, 1, 1, 1, 1, 1]))
         self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
-        self.target_up = np.array([0.8, 1, 1, 1, 1, 1, 1])
-        self.klevel = 3                                                       # keep k level recover-ability
+        self.target_up = np.array([1.5, 1.5, 1.5, 1, 1, 1, 1])
+        self.klevel = 4                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
-        # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
-        self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
+        self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
+        # self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
 
         self.taos = []
 
@@ -68,7 +70,8 @@ class ThreeDetector:
         self.fixed_theta = np.zeros([1, 7, 2])  # timestep, dimension, low or up
 
         # fixed detector's reachability
-        self.fixed_reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
+        self.fixed_reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
+        # self.fixed_reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
         self.fixed_taos = []
         self.fixed_klevels = []
 
@@ -79,7 +82,8 @@ class ThreeDetector:
         self.noauth_detectResults = []
         self.noauth_alarm_list = []
         self.noauth_theta = np.zeros([1, 7, 2])
-        self.noauth_reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
+        self.noauth_reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
+        # self.noauth_reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
         self.noauth_taos = []
         self.noauth_klevels = []
 
@@ -93,7 +97,6 @@ class ThreeDetector:
             self.index_list.append(exp.model.cur_index)
             self.reference_list.append(exp.ref[self.i])
             self.real_cur_y = exp.model.cur_y
-            # self.u.append(exp.cur_u)
             self.y.append(exp.model.cur_y)
             self.y_tilda.append(exp.model.cur_y)
             self.y_hat.append(exp.model.predict)
@@ -111,7 +114,7 @@ class ThreeDetector:
                 self.y_tilda[-1] = exp.model.cur_y
                 self.y_tilda1.append(self.y_tilda[-1])
                 # sensor measurement without attack
-                # self.y1.append(self.y[-1])
+                self.y1.append(self.y[-1])
 
             # window-based detector
             residual = self.y_hat[self.i - 1] - self.y_tilda[self.i - 1]
@@ -121,11 +124,12 @@ class ThreeDetector:
             temp = deepcopy(self.detector.tao)
             self.taos.append(temp)
             if alarm:
+                print("***********************************")
                 print("alarm at", exp.model.cur_index)
                 if self.alertat == 0:
                     self.alertat = exp.model.cur_index
                 # return
-            if self.i >= 130:
+            if self.i >= 40:
                 return
 
             # fixed window-based detector
@@ -275,22 +279,39 @@ class ThreeDetector:
                     noauth_kresult, noauth_start_step, noauth_end_step = self.noauth_reach.k_level(x_hatz, noauth_thetaz)
                     self.noauth_klevels.append(noauth_kresult)
                     # bound too large
-                    if noauth_theta1[0][1] - noauth_theta1[0][0] >= 1.2:
+                    if noauth_theta1[0][1] - noauth_theta1[0][0] >= 1:
                         self.stop_flag = 1
 
                 while(True):
+                    print("self.i", self.i)
                     if self.alertat != 0:
                         break
-                    if abs(self.klevels[-1] - self.klevel) >= 2:
-                        # adjust threshold
-                        # print('adjust threshold')
-                        delta_theta = self.reach.adjust_new(kresult, start_step, end_step, self.klevel)
-                        # print("delta_theta", delta_theta)
-                        self.detector.adjust(delta_theta)
-                        # temp = deepcopy(self.detector.tao)
+                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
+                        print("adjust threshold")
+                        if self.klevels[-1] - self.klevel < 0:
+                            inOrDe = 0
+                        else:
+                            inOrDe = 1
+                        delta_tau = self.reach.adjustTauNew(self.pOrN, start_step, end_step, inOrDe, self.detector)
+                        # delta_tau = self.reach.adjustTau(self.pOrN, start_step, end_step)
+                        print("delta tao", delta_tau)
+                        self.detector.adjust(delta_tau, inOrDe)
                         self.taos[-1] = deepcopy(self.detector.tao)
+                        print("self.taos", self.taos[-1])
                     else:
                         break
+                    # if self.alertat != 0:
+                    #     break
+                    # if abs(self.klevels[-1] - self.klevel) >= 2:
+                    #     # adjust threshold
+                    #     # print('adjust threshold')
+                    #     delta_theta = self.reach.adjust_new(kresult, start_step, end_step, self.klevel)
+                    #     # print("delta_theta", delta_theta)
+                    #     self.detector.adjust(delta_theta)
+                    #     # temp = deepcopy(self.detector.tao)
+                    #     self.taos[-1] = deepcopy(self.detector.tao)
+                    # else:
+                    #     break
 
                     self.detectResults[-1] = self.detector.detectagain1(residual)
                     alarm = self.detector.alarmOrN()
@@ -345,6 +366,7 @@ class ThreeDetector:
         pOrN = [0] * self.detector.m
         for i in range(self.detector.m):
             pOrN[i] = self.residuals[t][i] < 0 and -1 or 1
+        self.pOrN = pOrN
         l = len(self.y)
         rsum = np.zeros(self.detector.m)
         # for i in range(t):
@@ -360,13 +382,31 @@ class ThreeDetector:
 
         theta1 = np.zeros([self.detector.m, 2])
 
+        # for i in range(len(pOrN)):
+        #     if pOrN[i] > 0:
+        #         theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
+        #         theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.theta[t - 1, :, 1] + 0.002)[i]
+        #     else:
+        #         theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002)[i]
+        #         theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+        # return theta1
+
         for i in range(len(pOrN)):
+            A_theta_lo = 0
+            A_theta_up = 0
+            for j in range(self.A.shape[0]):
+                if self.A[i][j] >=0:
+                    A_theta_lo += self.A[i][j] * self.theta[t - 1, j, 0]
+                    A_theta_up += self.A[i][j] * self.theta[t - 1, j, 1]
+                else:
+                    A_theta_lo += self.A[i][j] * self.theta[t - 1, j, 1]
+                    A_theta_up += self.A[i][j] * self.theta[t - 1, j, 0]
             if pOrN[i] > 0:
-                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
-                theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.theta[t - 1, :, 1] + 0.002)[i]
+                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002 + self.y_tilda[t])[i] + A_theta_lo
+                theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + 0.002)[i] + A_theta_up
             else:
-                theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 0] - 0.002)[i]
-                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + self.A @ self.theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+                theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002)[i] + A_theta_lo
+                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + 0.002 + self.y_tilda[t])[i] + A_theta_up
         return theta1
 
     def boundByDetector1(self, t, detector):
@@ -388,17 +428,34 @@ class ThreeDetector:
 
         theta1 = np.zeros([detector.m, 2])
 
+        # for i in range(len(pOrN)):
+        #     if pOrN[i] > 0:
+        #         theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+        #             t - 1] + self.A @ self.fixed_theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
+        #         theta1[i][1] = (detector.tao - rsum + self.A @ (
+        #                     self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.fixed_theta[t - 1, :, 1] + 0.002)[i]
+        #     else:
+        #         theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+        #             t - 1] + self.A @ self.fixed_theta[t - 1, :, 0] - 0.002)[i]
+        #         theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+        #             t - 1] + self.A @ self.fixed_theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+        # return theta1
         for i in range(len(pOrN)):
+            A_theta_lo = 0
+            A_theta_up = 0
+            for j in range(self.A.shape[0]):
+                if self.A[i][j] >=0:
+                    A_theta_lo += self.A[i][j] * self.fixed_theta[t - 1, j, 0]
+                    A_theta_up += self.A[i][j] * self.fixed_theta[t - 1, j, 1]
+                else:
+                    A_theta_lo += self.A[i][j] * self.fixed_theta[t - 1, j, 1]
+                    A_theta_up += self.A[i][j] * self.fixed_theta[t - 1, j, 0]
             if pOrN[i] > 0:
-                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
-                    t - 1] + self.A @ self.fixed_theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
-                theta1[i][1] = (detector.tao - rsum + self.A @ (
-                            self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.fixed_theta[t - 1, :, 1] + 0.002)[i]
+                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002 + self.y_tilda[t])[i] + A_theta_lo
+                theta1[i][1] = (detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + 0.002)[i] + A_theta_up
             else:
-                theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
-                    t - 1] + self.A @ self.fixed_theta[t - 1, :, 0] - 0.002)[i]
-                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
-                    t - 1] + self.A @ self.fixed_theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+                theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002)[i] + A_theta_lo
+                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + 0.002 + self.y_tilda[t])[i] + A_theta_up
         return theta1
 
     def boundByDetector2(self, t, detector):
@@ -420,16 +477,34 @@ class ThreeDetector:
 
         theta1 = np.zeros([detector.m, 2])
 
+        # for i in range(len(pOrN)):
+        #     if pOrN[i] > 0:
+        #         theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+        #             t - 1] + self.A @ self.noauth_theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
+        #         theta1[i][1] = (detector.tao - rsum + self.A @ (
+        #                 self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.noauth_theta[t - 1, :, 1] + 0.002)[
+        #             i]
+        #     else:
+        #         theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+        #             t - 1] + self.A @ self.noauth_theta[t - 1, :, 0] - 0.002)[i]
+        #         theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
+        #             t - 1] + self.A @ self.noauth_theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+        # return theta1
+
         for i in range(len(pOrN)):
+            A_theta_lo = 0
+            A_theta_up = 0
+            for j in range(self.A.shape[0]):
+                if self.A[i][j] >=0:
+                    A_theta_lo += self.A[i][j] * self.noauth_theta[t - 1, j, 0]
+                    A_theta_up += self.A[i][j] * self.noauth_theta[t - 1, j, 1]
+                else:
+                    A_theta_lo += self.A[i][j] * self.noauth_theta[t - 1, j, 1]
+                    A_theta_up += self.A[i][j] * self.noauth_theta[t - 1, j, 0]
             if pOrN[i] > 0:
-                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
-                    t - 1] + self.A @ self.noauth_theta[t - 1, :, 0] - 0.002 + self.y_tilda[t])[i]
-                theta1[i][1] = (detector.tao - rsum + self.A @ (
-                        self.y_hat[t - 1] - self.y_tilda[t - 1]) + self.A @ self.noauth_theta[t - 1, :, 1] + 0.002)[
-                    i]
+                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002 + self.y_tilda[t])[i] + A_theta_lo
+                theta1[i][1] = (detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + 0.002)[i] + A_theta_up
             else:
-                theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
-                    t - 1] + self.A @ self.noauth_theta[t - 1, :, 0] - 0.002)[i]
-                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[
-                    t - 1] + self.A @ self.noauth_theta[t - 1, :, 1] + 0.002 + self.y_tilda[t])[i]
+                theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002)[i] + A_theta_lo
+                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + 0.002 + self.y_tilda[t])[i] + A_theta_up
         return theta1
