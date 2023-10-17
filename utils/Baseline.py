@@ -48,8 +48,8 @@ class Platoon:
     noise = {
         'process': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.001,
-                      'up': np.ones(7) * 0.001}
+            'param': {'lo': np.ones(7) * -0.002,
+                      'up': np.ones(7) * 0.002}
         },
         'measurement': {
             'type': 'box_uniform',

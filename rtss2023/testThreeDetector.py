@@ -6,10 +6,10 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-tao = np.ones(7) * 0.03
+tao = np.ones(7) * 0.02
 # tao = [0.5] * 7
 detector = window(tao, 7, 10)
-fixed_tao = np.ones(7) * 0.030
+fixed_tao = np.ones(7) * 0.020
 fixed_detector = window(fixed_tao, 7, 10)
 noauth_detector = window(fixed_tao, 7, 10)
 exp = Platoon
@@ -29,6 +29,19 @@ for i in range(10):
 print("attack", attack)
 
 sys = ThreeDetector(detector=detector, fixed_detector=fixed_detector, noauth_detector=noauth_detector, exp=exp, attack=attack, attack_duration=attack_duration)
+
+np.save("ThreeDetector/y_hat", sys.y_hat)
+np.save("ThreeDetector/y1", sys.y1)
+np.save("ThreeDetector/theta", sys.theta)
+np.save("ThreeDetector/taos", sys.taos)
+np.save("ThreeDetector/klevels", sys.klevels)
+np.save("ThreeDetector/fixed_theta", sys.fixed_theta)
+np.save("ThreeDetector/fixed_klevels", sys.fixed_klevels)
+np.save("ThreeDetector/fixed_taos", sys.fixed_taos)
+np.save("ThreeDetector/noauth_theta", sys.noauth_theta)
+np.save("ThreeDetector/noauth_klevels", sys.noauth_klevels)
+np.save("ThreeDetector/i", sys.i)
+np.save("ThreeDetector/alertat", sys.alertat)
 
 max_index = sys.i
 dim = 0

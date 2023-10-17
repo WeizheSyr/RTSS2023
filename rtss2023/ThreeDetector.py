@@ -51,9 +51,9 @@ class ThreeDetector:
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1, 1]))
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([1, 1, 1, 1, 1, 1, 1]))
-        self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
+        self.target_low = np.array([0, 0, 0, -0.5, -0.5, -0.5, -0.5])
         self.target_up = np.array([1.5, 1.5, 1.5, 1, 1, 1, 1])
-        self.klevel = 4                                                       # keep k level recover-ability
+        self.klevel = 6                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
         # self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
@@ -129,7 +129,7 @@ class ThreeDetector:
                 if self.alertat == 0:
                     self.alertat = exp.model.cur_index
                 # return
-            if self.i >= 40:
+            if self.i >= 70:
                 return
 
             # fixed window-based detector
@@ -286,7 +286,7 @@ class ThreeDetector:
                     print("self.i", self.i)
                     if self.alertat != 0:
                         break
-                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
+                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 2:
                         print("adjust threshold")
                         if self.klevels[-1] - self.klevel < 0:
                             inOrDe = 0
