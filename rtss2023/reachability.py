@@ -486,6 +486,7 @@ class Reachability:
                 deltaTau = np.zeros(self.A.shape[0])
                 a = np.argmax(self.detector.tao)
                 if self.detector.tao[a] > self.detector.iniTao[a]:
+                    # force decrease tau
                     deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.5
                     print("force decrease tau")
                     print("tao", self.detector.tao)
