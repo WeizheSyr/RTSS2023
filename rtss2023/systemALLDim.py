@@ -109,7 +109,7 @@ class SystemALLDim:
                 # self.detector.continueWork()
                 return
             # if self.i >= 200:
-            if self.i >= 80:
+            if self.i >= 70:
                 return
 
             # authentication

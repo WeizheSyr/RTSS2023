@@ -486,9 +486,7 @@ class Reachability:
                 deltaTau = np.zeros(self.A.shape[0])
                 a = np.argmax(self.detector.tao)
                 if self.detector.tao[a] > self.detector.iniTao[a]:
-                    deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.5
-                    print("force decrease tau")
-                    print("tao", self.detector.tao)
+                    deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.7
                     return deltaTau
             # increase k
             if start != 0:
@@ -517,17 +515,21 @@ class Reachability:
                             if np.any(self.adjustDirs[i]) and self.emptySet[i] == 1:
                                 objStep = i
                                 break
+                    # # Impossible to intersect
+                    # if objStep == 0:
+                    #     for i in range(self.max_step):
+                    #         if np.any(self.adjustDirs[i]) and self.emptySet[i] == 0:
+                    #             objStep = i
 
                 # deltaTau = self.getDeltaTau(objStep)
-                deltaTau = self.getDeltaTauIncreaseK(objStep)
-                # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
-            print("objstep", objStep)
+                # deltaTau = self.getDeltaTauIncreaseK(objStep)
+                deltaTau = self.getDeltaTauIncreaseKNew(objStep)
         else:
             # decrease k
             objStep = start + 1
             # objStep = end - 7
-            # deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
-            deltaTau = self.getDeltaTauDecreaseKNew(objStep)
+            deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
+            # deltaTau = self.getDeltaTauDecreaseKNew(objStep)
 
         endTime = time.time()
         self.timeAdjust += endTime - startTime
@@ -635,13 +637,6 @@ class Reachability:
         result = np.linalg.pinv(coefficient) @ newAdjustDir
         for i in range(np.shape(result)[0]):
             deltaTau[adjustDim[i]] = result[i]
-
-        adjustLarge = 0
-        for i in range(numDim):
-            if int(adjustDim[i]) == np.argmax(self.detector.tao):
-                adjustLarge = 1
-        if adjustLarge == 0:
-            deltaTau[int(np.argmax(self.detector.tao))] = np.max(self.detector.tao) * 0.2
         return deltaTau
 
     def getDeltaTauIncreaseKNew(self, d):
@@ -676,16 +671,15 @@ class Reachability:
         for i in range(supDim.shape[0]):
             # delta C + delta E
             if self.adjustDirs[d][i] > 0:
-                # 此处i的取值有问题
-                newAdjustDir[i] = self.adjustDirs[d][supDim[i]]
+                newAdjustDir[i] = self.adjustDirs[d][i]
                 for j in range(self.A.shape[0]):
-                    coefficient[i][j] = self.deltaCs[d][supDim[i]][j] + self.deltaEs[d][supDim[i]][j]
+                    coefficient[i][j] = self.deltaCs[d][i][j] + self.deltaEs[d][i][j]
                     absCoeff[i][j] = np.abs(coefficient[i][j])
             # delta C - delta E
             elif self.adjustDirs[d][i] < 0:
-                newAdjustDir[i] = self.adjustDirs[d][supDim[i]]
+                newAdjustDir[i] = self.adjustDirs[d][i]
                 for j in range(self.A.shape[0]):
-                    coefficient[i][j] = self.deltaCs[d][supDim[i]][j] - self.deltaEs[d][supDim[i]][j]
+                    coefficient[i][j] = self.deltaCs[d][i][j] - self.deltaEs[d][i][j]
                     absCoeff[i][j] = np.abs(coefficient[i][j])
 
         newCoeff = np.zeros([numDim, numDim])
@@ -696,17 +690,9 @@ class Reachability:
             for j in range(numDim):
                 newCoeff[i][j] = coefficient[i][int(adjustDim[j])]
 
-        result = np.linalg.pinv(newCoeff) @ (newAdjustDir * 1)
+        result = np.linalg.pinv(newCoeff) @ (newAdjustDir * 1.05)
         for i in range(numDim):
             deltaTau[int(adjustDim[i])] = result[i]
-
-        # decrease largest tau
-        adjustLarge = 0
-        for i in range(numDim):
-            if int(adjustDim[i]) == np.argmax(self.detector.tao):
-                adjustLarge = 1
-        if adjustLarge == 0:
-            deltaTau[int(np.argmax(self.detector.tao))] = np.argmax(self.detector.tao) * 0.2
         return deltaTau
 
     # get delta tau for decreasing recoveryability k
@@ -738,82 +724,69 @@ class Reachability:
         f = self.adjustDirs[d]
         for i in range(self.A.shape[0]):
             f[i] = np.abs(self.adjustDirs[d][i])
+        # supDim = np.argmin(self.scopes[d])
         supDim = np.argmin(f)
         print("self.adjustDirs[d][supDim]", self.adjustDirs[d][supDim])
         print("supdim", supDim)
-
         coefficients = np.zeros(self.A.shape[0])
         if self.adjustDirs[d][supDim] > 0:
             coefficients = np.array(self.deltaCs[d][supDim]) - np.array(self.deltaEs[d][supDim])
         elif self.adjustDirs[d][supDim] < 0:
             coefficients = np.array(self.deltaCs[d][supDim]) + np.array(self.deltaEs[d][supDim])
+        coefficient = np.sum(coefficients)
         print("coefficients", coefficients)
-
+        adjustDims = []
+        coefficient = 0
         if self.adjustDirs[d][supDim] > 0:
-            existP = 0
-            for i in range(self.A.shape[0]):
-                if coefficients[i] > 0:
-                    existP = 1
-            if existP == 1:
-                adjustDim = np.argmax(coefficients)
-            else:
-                adjustDim = np.argmin(coefficients)
+            adjustDim = np.argmax(coefficients)
+            # for i in range(self.A.shape[0]):
+            #     if coefficients[i] > 0:
+            #         adjustDims.append(i)
+            #         coefficient += coefficients[i]
         else:
-            existN = 0
-            for i in range(self.A.shape[0]):
-                if coefficients[i] < 0:
-                    existN = 1
-            if existN == 1:
-                adjustDim = np.argmin(coefficients)
-            else:
-                adjustDim = np.argmax(coefficients)
-
+            adjustDim = np.argmin(coefficients)
+            # for i in range(self.A.shape[0]):
+            #     if coefficients[i] < 0:
+            #         adjustDims.append(i)
+            #         coefficient += coefficients[i]
         delta = self.adjustDirs[d][supDim] * 1.05 / coefficients[adjustDim]
+        # delta = self.adjustDirs[d][supDim] * 1.05 / coefficient
         deltaTau[adjustDim] = delta
+        # for i in range(len(adjustDims)):
+        #     deltaTau[i] = delta
+        # tau + deltaTau
         return deltaTau
 
     def getDeltaTauDecreaseKNew(self, d):
         print("self.adjustDirs[d]", self.adjustDirs[d])
-        deltaTau = np.zeros(self.A.shape[0])
 
-        coefficients = np.zeros(self.A.shape)
-        supDim = np.zeros(self.A.shape[0])
-        delta = np.zeros(self.A.shape[0])
+        coefficients = []
         for i in range(self.A.shape[0]):
             if self.adjustDirs[d][i] > 0:
-                coefficients[i] = np.array(self.deltaCs[d][i]) - np.array(self.deltaEs[d][i])
+                coefficients.append(np.array(self.deltaCs[d][i]) - np.array(self.deltaEs[d][i]))
             elif self.adjustDirs[d][i] < 0:
-                coefficients[i] = np.array(self.deltaCs[d][i]) + np.array(self.deltaEs[d][i])
+                coefficients.append(np.array(self.deltaCs[d][i]) + np.array(self.deltaEs[d][i]))
+        print(coefficients)
+        coefficients = np.array(coefficients)
 
-            if self.adjustDirs[d][i] > 0:
-                existP = 0
-                for j in range(self.A.shape[0]):
-                    if coefficients[i][j] > 0:
-                        existP = 1
-                if existP == 1:
-                    supDim[i] = np.argmax(coefficients[i])
-                else:
-                    supDim[i] = np.argmin(coefficients[i])
-            else:
-                existN = 0
-                for j in range(self.A.shape[0]):
-                    if coefficients[i][j] < 0:
-                        existN = 1
-                if existN == 1:
-                    supDim[i] = np.argmin(coefficients[i])
-                else:
-                    supDim[i] = np.argmax(coefficients[i])
+        # for i in range(self.A.shape[0]):
+        #     if self.adjustDirs[d][i] > 0:
 
-            delta[i] = self.adjustDirs[d][i] * 1.05 / coefficients[i][int(supDim[i])]
-        # print("coefficients", coefficients)
-        # print("delta", delta)
-        t = delta
+        absCoeff = np.abs(coefficients)
+        sumCoeff = np.zeros(self.A.shape[0])
         for i in range(self.A.shape[0]):
-            if t[i] < 0:
-                t[i] = 100
-        adjustDim = np.argmin(t)
+            sumCoeff[i] = np.sum(absCoeff[i])
 
-        deltaTau[adjustDim] = delta[adjustDim]
+        adjSupDim = []
+        for i in range(self.A.shape[0]):
+            adjSupDim.append(self.adjustDirs[d][i] / sumCoeff[i])
+        t = adjSupDim
+        supDim = np.argmin(np.abs(t))
+        print("self.detector.iniTao", self.detector.iniTao)
+        print("adjSupDim", adjSupDim)
+        deltaTau = np.zeros(self.A.shape[0])
+        for i in range(self.A.shape[0]):
+            deltaTau[i] = adjSupDim[supDim]
         return deltaTau
 
 
@@ -860,9 +833,4 @@ class Reachability:
         for i in range(self.A.shape[0]):
             if D_lo[i] > D_up[i]:
                 adjustDir[i] = D_up[i] - D_lo[i]
-                if -0.01 < adjustDir[i] < 0.01:
-                    if adjustDir[i] > 0:
-                        adjustDir[i] = 0.01
-                    else:
-                        adjustDir[i] = -0.01
         return adjustDir
