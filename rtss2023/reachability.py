@@ -137,6 +137,8 @@ class Reachability:
         for i in range(self.max_step):
             # ks[i], adjustDir, iteration = self.check_intersection(i)
             ks[i], adjustDir, inOrOut, scope, iteration, intersectCase = self.check_intersectionNew(i)
+            if i <= 5:
+                ks[i] = 0
             adjustDirs.append(adjustDir)
             inOrOuts.append(inOrOut)
             scopes.append(scope)
@@ -482,20 +484,21 @@ class Reachability:
         self.deltaEs = deltaEs
 
         if inOrDe == 0:
-            if start == 0:
-                deltaTau = np.zeros(self.A.shape[0])
-                a = np.argmax(self.detector.tao)
-                if self.detector.tao[a] > self.detector.iniTao[a]:
-                    # force decrease tau
-                    # deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.5
-                    deltaTau[a] = (self.detector.tao[a] - 0.025) * 0.2
-                    print("force decrease tau")
-                    # print("tao", self.detector.tao)
-                    return deltaTau
+            # if start == 0:
+            #     deltaTau = np.zeros(self.A.shape[0])
+            #     a = np.argmax(self.detector.tao)
+            #     if self.detector.tao[a] > self.detector.iniTao[a]:
+            #         # force decrease tau
+            #         # deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.5
+            #         deltaTau[a] = (self.detector.tao[a] - 0.025) * 0.2
+            #         print("force decrease tau")
+            #         # print("tao", self.detector.tao)
+            #         return deltaTau
             # increase k
             if start != 0:
                 objStep = start - 1
-                deltaTau = self.getDeltaTauIncreaseK(objStep)
+                # deltaTau = self.getDeltaTauIncreaseK(objStep)
+                deltaTau = self.getDeltaTauIncreaseDir(objStep)
                 # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
             else:
                 objStep = 0
@@ -521,7 +524,8 @@ class Reachability:
                                 break
 
                 # deltaTau = self.getDeltaTau(objStep)
-                deltaTau = self.getDeltaTauIncreaseK(objStep)
+                # deltaTau = self.getDeltaTauIncreaseK(objStep)
+                deltaTau = self.getDeltaTauIncreaseDir(objStep)
                 # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
             # print("objstep", objStep)
         else:
@@ -529,7 +533,8 @@ class Reachability:
             objStep = start + 1
             # objStep = end - 7
             # deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
-            deltaTau = self.getDeltaTauDecreaseKNew(objStep)
+            # deltaTau = self.getDeltaTauDecreaseKNew(objStep)
+            deltaTau = self.getDeltaTauDecreaseK(objStep)
 
         endTime = time.time()
         self.timeAdjust += endTime - startTime
@@ -592,10 +597,10 @@ class Reachability:
     # get delta tau for increasing recoveryability k
     def getDeltaTauIncreaseK(self, d):
         deltaTau = np.zeros(self.A.shape[0])
-        for i in range(self.A.shape[0]):
-            if self.detector.tao[i] > self.detector.iniTao[i] * 1.05:
-                deltaTau[int(np.argmax(self.detector.tao))] = (self.detector.tao[i] - self.detector.iniTao[i]) / 2
-                return deltaTau
+        # for i in range(self.A.shape[0]):
+        #     if self.detector.tao[i] > self.detector.iniTao[i] * 1.05:
+        #         deltaTau[int(np.argmax(self.detector.tao))] = (self.detector.tao[i] - self.detector.iniTao[i]) / 2
+        #         return deltaTau
 
         print("inOrOuts", self.inOrOuts[d])
         print("self.adjustDirs[d]", self.adjustDirs[d])
@@ -716,9 +721,65 @@ class Reachability:
             deltaTau[int(np.argmax(self.detector.tao))] = np.argmax(self.detector.tao) * 0.2
         return deltaTau
 
+    def getDeltaTauIncreaseDir(self, d):
+        if np.sum(self.inOrOuts[d]) != 0:
+            numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+            numDim = int(numDim)
+            adjustDim = []
+
+            for i in range(self.A.shape[0]):
+                if self.inOrOuts[d][i] == 0:
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+        else:
+            numDim = 0
+            adjustDim = []
+            for i in range(self.A.shape[0]):
+                if self.adjustDirs[d][i] != 0:
+                    numDim += 1
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+        deltaTau = np.zeros(self.A.shape[0])
+        for i in range(numDim):
+            deltaTau[int(adjustDim[i])] = self.detector.tao[int(adjustDim[i])] * 0.1
+        coefficient = np.zeros([numDim, numDim])
+        newAdjustDir = np.zeros(numDim)
+        # k = 0
+        # for i in range(self.A.shape[0]):
+        #     # delta C + delta E
+        #     if self.adjustDirs[d][i] > 0 and self.inOrOuts[d][i] == 0:
+        #         newAdjustDir[k] = self.adjustDirs[d][i]
+        #         for j in range(numDim):
+        #             # coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
+        #             coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] + self.deltaEs[d][i][adjustDim[j]]
+        #         k += 1
+        #     # delta C - delta E
+        #     elif self.adjustDirs[d][i] < 0 and self.inOrOuts[d][i] == 0:
+        #         newAdjustDir[k] = self.adjustDirs[d][i]
+        #         for j in range(numDim):
+        #             # coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
+        #             coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] - self.deltaEs[d][i][adjustDim[j]]
+        #         k += 1
+        # for i in range(numDim):
+        #     deltaTau[adjustDim[i]] = newAdjustDir[i] / coefficient[i][i]
+        # result = np.linalg.inv(coefficient) @ newAdjustDir
+        # for i in range(np.shape(result)[0]):
+        #     deltaTau[adjustDim[i]] = result[i]
+        return deltaTau
+
+
     # get delta tau for decreasing recoveryability k
     # only adjust one dimension
     def getDeltaTauDecreaseK(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        deltaTau[np.argmin(self.scopes[d])] = self.detector.tao[np.argmin(self.scopes[d])] * 0.1
+        if np.argmin(self.scopes[d]) != np.argmin(self.detector.tao):
+            deltaTau[np.argmin(self.detector.tao)] = self.detector.tao[np.argmin(self.detector.tao)] * 0.1
+        # deltaTau[np.argmin(self.detector.tao)] = self.detector.tao[np.argmin(self.detector.tao)] * 0.1
+        # for i in range(self.A.shape[0]):
+        #     deltaTau[i] = self.detector.tao[i] * 0.1
+        return deltaTau
+
         print("self.adjustDirs[d]", self.adjustDirs[d])
         deltaTau = np.zeros(self.A.shape[0])
         supDim = np.argmin(self.scopes[d])
@@ -733,9 +794,9 @@ class Reachability:
         for i in range(self.A.shape[0]):
             t[i] = np.abs(t[i])
         adjustDim = np.argmax(t)
-        if adjustDim == argminTau and self.detector.tao[argminTau] <= 0.032/2:
-            t[adjustDim] = 0
-            adjustDim = np.argmax(t)
+        # if adjustDim == argminTau and self.detector.tao[argminTau] <= 0.032/2:
+        #     t[adjustDim] = 0
+        #     adjustDim = np.argmax(t)
         deltaTau[adjustDim] = self.adjustDirs[d][supDim] / coefficient[adjustDim]
         return deltaTau
 
@@ -833,16 +894,18 @@ class Reachability:
             if point[i] <= D_lo[i]:
                 adjustDir[i] = point[i] - D_lo[i]
                 inOrOut[i] = 0
+                scope[i] = 100
             elif point[i] >= D_up[i]:
                 adjustDir[i] = point[i] - D_up[i]
                 inOrOut[i] = 0
+                scope[i] = 100
             elif D_lo[i] < point[i] < D_up[i]:
                 inOrOut[i] = 1
                 if D_up[i] - point[i] > point[i] - D_lo[i]:
                     adjustDir[i] = point[i] - D_lo[i]
                 else:
                     adjustDir[i] = point[i] - D_up[i]
-            scope[i] = np.abs(adjustDir[i]) / (D_up[i] - D_lo[i])
+                scope[i] = np.abs(adjustDir[i]) / (D_up[i] - D_lo[i])
         return adjustDir, inOrOut, scope
 
 

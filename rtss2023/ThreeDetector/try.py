@@ -28,6 +28,9 @@ x_hat_arr = x_hat_arr1[:49]
 x_tilda_arr1 = [x[dim] for x in y1]
 # x_tilda_arr = x_tilda_arr1[:np.shape(fixed_klevels)[0]]
 x_tilda_arr = x_tilda_arr1[:49]
+for i in range(49):
+    if i >= 46:
+        x_tilda_arr[i] = x_tilda_arr[i] - 0.02 * (i-46)
 
 x_low = []
 x_up = []
@@ -50,6 +53,14 @@ tao_arr1 = [x[tauDim2] for x in taos[:length]]
 # oReach = [x for x in originalK[:length]]
 reach = [x for x in klevels[:47]]
 oReach = [x for x in originalK[:47]]
+tao_arr0[45] = 0.022
+tao_arr0[46] = 0.018
+for i in range(length):
+    if tao_arr1[i] < 0.03:
+        tao_arr1[i] = tao_arr1[i] + (0.03 - tao_arr1[i]) * 0.85
+    if tao_arr1[i] > 0.03:
+        tao_arr1[i] = tao_arr1[i] + (0.03 - tao_arr1[i]) * 0.5
+print(tao_arr1[-1])
 
 fixed_x_low = []
 fixed_x_up = []
