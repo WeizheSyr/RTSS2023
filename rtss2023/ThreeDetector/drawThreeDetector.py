@@ -15,12 +15,13 @@ noauth_theta = np.load("noauth_theta.npy")
 noauth_klevels = np.load("noauth_klevels.npy")
 alertat = np.load("alertat.npy")
 sysI = np.load("i.npy")
+originalK = np.load("originalK.npy")
 
 max_index = sysI
 
-tauDim1 = 6
+tauDim1 = 2
 tauDim2 = 5
-dim = 4
+dim = 2
 print("max_index: ", max_index)
 x_hat_arr = [x[dim] for x in y_hat]
 x_tilda_arr = [x[dim] for x in y1]
@@ -37,6 +38,7 @@ for i in range(length):
 tao_arr0 = [x[tauDim1] for x in taos[:length]]
 tao_arr1 = [x[tauDim2] for x in taos[:length]]
 reach = [x for x in klevels[:length]]
+oReach = [x for x in originalK[:length]]
 
 fixed_x_low = []
 fixed_x_up = []
@@ -71,6 +73,7 @@ plt.legend(loc=2)
 # plt.subplot(4, 1, 2)
 plt.subplot(grid[2:3, 0])
 plt.plot(reach, c='red', linestyle='--', label='adaptive + authenticator')
+plt.plot(oReach, c='green', linestyle='--', label='adaptive + authenticator')
 plt.plot(fixed_reach, c='blue', linestyle='-.', label='non-adaptive + authenticator')
 plt.plot(noauth_reach, c='black', linestyle=':', label='non-adaptive')
 plt.legend(loc=2)

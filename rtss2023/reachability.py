@@ -488,7 +488,7 @@ class Reachability:
                 if self.detector.tao[a] > self.detector.iniTao[a]:
                     # force decrease tau
                     # deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.5
-                    deltaTau[a] = (self.detector.tao[a] - 0.025) * 0.5
+                    deltaTau[a] = (self.detector.tao[a] - 0.025) * 0.2
                     print("force decrease tau")
                     # print("tao", self.detector.tao)
                     return deltaTau
@@ -592,6 +592,11 @@ class Reachability:
     # get delta tau for increasing recoveryability k
     def getDeltaTauIncreaseK(self, d):
         deltaTau = np.zeros(self.A.shape[0])
+        for i in range(self.A.shape[0]):
+            if self.detector.tao[i] > self.detector.iniTao[i] * 1.05:
+                deltaTau[int(np.argmax(self.detector.tao))] = (self.detector.tao[i] - self.detector.iniTao[i]) / 2
+                return deltaTau
+
         print("inOrOuts", self.inOrOuts[d])
         print("self.adjustDirs[d]", self.adjustDirs[d])
         print("empty set", self.emptySet[d])
@@ -634,7 +639,7 @@ class Reachability:
                     # coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
                     coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] - self.deltaEs[d][i][adjustDim[j]]
                 k += 1
-        result = np.linalg.pinv(coefficient) @ newAdjustDir
+        result = np.linalg.inv(coefficient) @ newAdjustDir
         for i in range(np.shape(result)[0]):
             deltaTau[adjustDim[i]] = result[i]
 

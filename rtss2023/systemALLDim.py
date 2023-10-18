@@ -62,6 +62,7 @@ class SystemALLDim:
         # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
         # self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
+        self.originalK = []
 
         self.taos = []
 
@@ -108,7 +109,7 @@ class SystemALLDim:
                 # self.detector.continueWork()
                 return
             # if self.i >= 200:
-            if self.i >= 70:
+            if self.i >= 50:
                 return
 
             # authentication
@@ -193,6 +194,7 @@ class SystemALLDim:
                 thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
                 kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                 self.klevels.append(kresult)
+                self.originalK.append(kresult)
                 print('recovery-ability: ', self.klevels[-1])
 
                 while(True):

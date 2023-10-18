@@ -51,12 +51,13 @@ class ThreeDetector:
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1, 1]))
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([1, 1, 1, 1, 1, 1, 1]))
-        self.target_low = np.array([0, 0, 0, -0.5, -0.5, -0.5, -0.5])
+        self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
         self.target_up = np.array([1.5, 1.5, 1.5, 1, 1, 1, 1])
-        self.klevel = 6                                                       # keep k level recover-ability
+        self.klevel = 4                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
         # self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)
+        self.originalK = []
 
         self.taos = []
 
@@ -109,7 +110,7 @@ class ThreeDetector:
                 # attack here
                 attack_step = exp.model.cur_index - exp.attack_start_index
                 print("attack step", attack_step)
-                exp.model.cur_y[0] = exp.model.cur_y[0] - attack[attack_step]
+                exp.model.cur_y[0] = exp.model.cur_y[0] + attack[attack_step]
                 # sensor measurement with attack
                 self.y_tilda[-1] = exp.model.cur_y
                 self.y_tilda1.append(self.y_tilda[-1])
@@ -129,7 +130,7 @@ class ThreeDetector:
                 if self.alertat == 0:
                     self.alertat = exp.model.cur_index
                 # return
-            if self.i >= 70:
+            if self.i >= 40:
                 return
 
             # fixed window-based detector
@@ -216,6 +217,7 @@ class ThreeDetector:
                             self.noauth_theta = np.append(self.noauth_theta, noauth_t, axis=0)
                         first = 1
                         self.klevels.append(0)
+                        self.originalK.append(0)
                         # fixed detector
                         self.fixed_klevels.append(0)
                         # no auth detector
@@ -239,6 +241,7 @@ class ThreeDetector:
                 self.theta = np.append(self.theta, t, axis=0)
                 if first == 1:
                     self.klevels.append(0)
+                    self.originalK.append(0)
                 # print('theta ', self.theta[-1][0])
                 # print('i ', self.i)
                 # print('state', exp.model.feedbacks[self.i - 1][0])
@@ -266,6 +269,8 @@ class ThreeDetector:
                 thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
                 kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                 self.klevels.append(kresult)
+                temp = deepcopy(kresult)
+                self.originalK.append(temp)
                 # print('recovery-ability: ', self.klevels[-1])
 
                 # fixed detector

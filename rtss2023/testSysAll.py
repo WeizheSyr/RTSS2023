@@ -4,7 +4,7 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-tao = np.ones(7) * 0.020
+tao = np.ones(7) * 0.025
 # tao = [0.5] * 7
 detector = window(tao, 7, 10)
 exp = Platoon

@@ -60,4 +60,4 @@ class Platoon:
     model = Platoon('test', dt, max_index, noise)
     # attack_start_index = 400        # for time-consuming
     # attack_start_index = 55     # for three detector
-    attack_start_index = 65
+    attack_start_index = 35

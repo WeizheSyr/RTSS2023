@@ -6,26 +6,20 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-tao = np.ones(7) * 0.02
+tao = np.ones(7) * 0.03
 # tao = [0.5] * 7
 detector = window(tao, 7, 10)
-fixed_tao = np.ones(7) * 0.020
+fixed_tao = np.ones(7) * 0.03
 fixed_detector = window(fixed_tao, 7, 10)
 noauth_detector = window(fixed_tao, 7, 10)
 exp = Platoon
-attack = np.zeros(50)
+attack = np.zeros(20)
 attack_duration = 50
 # attack = np.zeros(attack_duration)
-for i in range(10):
+for i in range(5):
     attack[i] = 0.002 * i
 for i in range(10):
-    attack[i + 9] = 0.015 + 0.0006 * i
-for i in range(10):
-    attack[i + 19] = 0.018 + 0.0006 * i
-for i in range(10):
-    attack[i + 29] = 0.022 + 0.0006 * i
-for i in range(10):
-    attack[i + 39] = 0.03 + 0.0005 * i
+    attack[i + 4] = 0.015 + 0.0006 * i
 print("attack", attack)
 
 sys = ThreeDetector(detector=detector, fixed_detector=fixed_detector, noauth_detector=noauth_detector, exp=exp, attack=attack, attack_duration=attack_duration)
@@ -42,6 +36,7 @@ np.save("ThreeDetector/noauth_theta", sys.noauth_theta)
 np.save("ThreeDetector/noauth_klevels", sys.noauth_klevels)
 np.save("ThreeDetector/i", sys.i)
 np.save("ThreeDetector/alertat", sys.alertat)
+np.save("ThreeDetector/originalK", sys.originalK)
 
 max_index = sys.i
 dim = 0
@@ -62,6 +57,7 @@ for i in range(length):
 tao_arr0 = [x[1] for x in sys.taos[:length]]
 tao_arr1 = [x[2] for x in sys.taos[:length]]
 reach = [x for x in sys.klevels[:length]]
+oReach = [x for x in sys.originalK[:length]]
 
 fixed_x_low = []
 fixed_x_up = []
@@ -96,6 +92,7 @@ plt.legend(loc=2)
 # plt.subplot(4, 1, 2)
 plt.subplot(grid[2:3, 0])
 plt.plot(reach, c='red', linestyle='--', label='adaptive + authenticator')
+plt.plot(oReach, c='green', linestyle='--', label='adaptive + authenticator')
 plt.plot(fixed_reach, c='blue', linestyle='-.', label='non-adaptive + authenticator')
 plt.plot(noauth_reach, c='black', linestyle=':', label='non-adaptive')
 plt.legend(loc=2)
