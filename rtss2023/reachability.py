@@ -768,6 +768,50 @@ class Reachability:
         return deltaTau
 
 
+    def getDeltaTauIncreaseDirNew(self, d):
+        if np.sum(self.inOrOuts[d]) != 0:
+            numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+            numDim = int(numDim)
+            supDim = []
+            for i in range(self.A.shape[0]):
+                if self.inOrOuts[d][i] == 0:
+                    supDim.append(i)
+            supDim = np.array(supDim)
+        else:
+            numDim = 0
+            supDim = []
+            for i in range(self.A.shape[0]):
+                if self.adjustDirs[d][i] != 0:
+                    numDim += 1
+                    supDim.append(i)
+            adjustDim = np.array(supDim)
+
+        deltaTau = np.zeros(self.A.shape[0])
+        coefficient = np.zeros([numDim, numDim])
+        newAdjustDir = np.zeros(numDim)
+        k = 0
+        for i in range(self.A.shape[0]):
+            # delta C + delta E
+            if self.adjustDirs[d][i] > 0 and self.inOrOuts[d][i] == 0:
+                newAdjustDir[k] = self.adjustDirs[d][i]
+                for j in range(numDim):
+                    # coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
+                    coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] + self.deltaEs[d][i][adjustDim[j]]
+                k += 1
+            # delta C - delta E
+            elif self.adjustDirs[d][i] < 0 and self.inOrOuts[d][i] == 0:
+                newAdjustDir[k] = self.adjustDirs[d][i]
+                for j in range(numDim):
+                    # coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
+                    coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] - self.deltaEs[d][i][adjustDim[j]]
+                k += 1
+        for i in range(numDim):
+            deltaTau[adjustDim[i]] = newAdjustDir[i] / coefficient[i][i]
+        result = np.linalg.inv(coefficient) @ newAdjustDir
+        for i in range(np.shape(result)[0]):
+            deltaTau[adjustDim[i]] = result[i]
+        return deltaTau
+
     # get delta tau for decreasing recoveryability k
     # only adjust one dimension
     def getDeltaTauDecreaseK(self, d):
