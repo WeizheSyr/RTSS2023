@@ -539,8 +539,8 @@ class Reachability:
             # objStep = end - 7
             # deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
             # deltaTau = self.getDeltaTauDecreaseKNew(objStep)
-            deltaTau = self.getDeltaTauDecreaseK(objStep)
-            # deltaTau = self.getDeltaTauDecreaseKDirNew(objStep)
+            # deltaTau = self.getDeltaTauDecreaseK(objStep)
+            deltaTau = self.getDeltaTauDecreaseKDirNew(objStep)
 
         endTime = time.time()
         self.timeAdjust += endTime - startTime
@@ -807,20 +807,26 @@ class Reachability:
                 coefficients[i] = self.deltaCs[d][supDim[i]] - self.deltaEs[d][supDim[i]]
         for i in range(numDim):
             coefficient = 0
+            sumTau = 0
             if newAdjustDir[i] > 0:
                 for j in range(self.A.shape[0]):
                     if coefficients[i][j] > 0:
                         coefficient += coefficients[i][j]
+                        sumTau += self.detector.tao[i]
                 for j in range(self.A.shape[0]):
                     if coefficients[i][j] > 0:
-                        deltaTau[j] += (coefficients[i][j] / coefficient) * 0.1 * self.detector.tao[j]
+                        deltaTau[j] += (coefficients[i][j] / coefficient + self.detector.tao[i] / sumTau) * 0.05 * self.detector.tao[j]
             if newAdjustDir[i] < 0:
                 for j in range(self.A.shape[0]):
                     if coefficients[i][j] < 0:
                         coefficient += coefficients[i][j]
+                        sumTau += self.detector.tao[i]
                 for j in range(self.A.shape[0]):
                     if coefficients[i][j] < 0:
-                        deltaTau[j] += (coefficients[i][j] / coefficient) * 0.1 * self.detector.tao[j]
+                        deltaTau[j] += (coefficients[i][j] / coefficient + self.detector.tao[i] / sumTau) * 0.05 * self.detector.tao[j]
+            maxTau = np.argmax(self.detector.tao)
+            if deltaTau[maxTau] == 0 or deltaTau[maxTau] < 0.1 * self.detector.tao[maxTau]:
+                deltaTau[maxTau] = 0.3 * self.detector.tao[maxTau]
         return deltaTau
 
     # get delta tau for decreasing recoveryability k
@@ -857,8 +863,32 @@ class Reachability:
 
     def getDeltaTauDecreaseKDirNew(self, d):
         deltaTau = np.zeros(self.A.shape[0])
+        supDim = np.argmin(self.scopes[d])
+        coefficients = np.zeros(self.A.shape[0])
+        if self.adjustDirs[d][supDim] > 0:
+            coefficients = np.array(self.deltaCs[d][supDim]) - np.array(self.deltaEs[d][supDim])
+        elif self.adjustDirs[d][supDim] < 0:
+            coefficients = np.array(self.deltaCs[d][supDim]) + np.array(self.deltaEs[d][supDim])
+        coefficient = 0
+        sumTau = 0
         for i in range(self.A.shape[0]):
-            deltaTau[i] = self.detector.tao[i] * 0.05
+            if self.adjustDirs[d][supDim] > 0:
+                if coefficients[i] > 0:
+                    coefficient += coefficients[i]
+                    sumTau += self.detector.tao[i]
+            else:
+                if coefficients[i] < 0:
+                    coefficient += coefficients[i]
+                    sumTau += self.detector.tao[i]
+        for i in range(self.A.shape[0]):
+            if self.adjustDirs[d][supDim] > 0:
+                if coefficients[i] > 0:
+                    deltaTau[i] = (coefficients[i] / coefficient) * 0.1 * self.detector.tao[i]
+            else:
+                if coefficients[i] < 0:
+                    deltaTau[i] = (coefficients[i] / coefficient) * 0.1 * self.detector.tao[i]
+        minTau = np.argmin(self.detector.tao)
+        deltaTau[minTau] = 0.1 * self.detector.tao[minTau]
         return deltaTau
 
     def getDeltaTauDecreaseKAllDim(self, d):
