@@ -207,6 +207,7 @@ class SystemALLDim:
                         delta_tau = self.reach.adjustTauNew(self.pOrN, start_step, end_step, inOrDe, self.detector)
                         # delta_tau = self.reach.adjustTau(self.pOrN, start_step, end_step)
                         if not np.any(delta_tau):
+                            print("not any delta_tau")
                             exit()
                         print("delta tao", delta_tau)
                         self.detector.adjust(delta_tau, inOrDe)
