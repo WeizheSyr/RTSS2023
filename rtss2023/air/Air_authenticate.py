@@ -32,7 +32,7 @@ class Authenticate:
                 d[0] = np.zeros(self.m)
             else:
                 if i == 1:
-                    d[1] = np.ones(self.m) * 0.002
+                    d[1] = np.ones(self.m) * p
                 else:
                     d[i] = abs(self.A) @ d[i - 1] + d[1]
         return d

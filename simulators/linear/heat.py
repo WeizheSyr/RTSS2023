@@ -5,7 +5,7 @@ import math
 from utils import PID, Simulator, LQR
 
 # system dynamics
-state_num = 45
+state_num = 10
 A = np.zeros((state_num, state_num))
 tmp = np.array([[1], [-2], [1]])
 A[0:2, 0:1] = tmp[1:3, 0:1]

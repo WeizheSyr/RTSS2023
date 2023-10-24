@@ -1,49 +1,64 @@
 import numpy as np
 from utils.formal.zonotope import Zonotope
-import cvxpy as cp
 import time
 
-class Reachability1:
-    def __init__(self, A, B, p: Zonotope, U: Zonotope, target: Zonotope, target_low, target_up, max_step=20, c=None):
+class Reachability:
+    def __init__(self, A, B, P: Zonotope, U: Zonotope, target_low, target_up, max_step=20):
         self.A = A
         self.B = B
-        self.p = p
-        self.Uz = U
-        self.targetz = target
-        self.target_low = target_low
-        self.target_up = target_up
+        self.P = P
+        self.U = U
+        # D1
+        self.t_lo = target_low
+        self.t_up = target_up
         self.max_step = max_step
-        self.c = c
+
+        # A^i
         self.A_i = [np.eye(A.shape[0])]
         for i in range(max_step):
             self.A_i.append(A @ self.A_i[-1])
-        self.inv_A_d = self.inv_A_d()
+        # A^i BU
         self.A_i_B_U = [val @ B @ U for val in self.A_i]
-        self.A_i_p = [self.A_i[val] @ self.p for val in range(max_step)]
+        # A^i P
+        self.A_i_P = [self.A_i[val] @ self.P for val in range(max_step)]
+        # l for support function
         self.l = np.eye(A.shape[0])
 
+        # E
         self.E = self.reach_E()
-        self.E_low, self.E_up = self.E_bound()
+        self.E_lo, self.E_up = self.bound_E()
 
-        self.D1 = self.reach_D1()
+        # D
         self.D2 = None
         self.D3 = None
         self.D4 = self.reach_D4()
-        self.D_low = None
+        self.D_lo = None
         self.D_up = None
 
-        self.result = None
-        self.intersection = None
-        self.distance = None
+        # result of checking intersection
+        self.intersection = np.zeros(self.max_step)
+        self.delta_theta = np.zeros(A.shape[0])
+        self.reach = None
 
-        self.delta_theta = None
+        # adjust Tau
+        self.adjustDirs = None
+        # s norm positive or negative
+        self.sNorm = None
+        self.deltaCs = None
+        self.deltaEs = None
+        self.inOrOuts = None     # 0: out, 1: in
+        self.scopes = None
+        self.detector = None
+        self.emptySet = np.zeros(self.max_step)
+        self.intersectCases = None # 0: impossible, 1: probable, 2: intersection, 3, empty
 
-    def inv_A_d(self):
-        inv_A_d = []
-        for i in range(self.max_step):
-            inv_A_d.append(np.linalg.inv(self.A_i[i]))
-        return inv_A_d
+        # time
+        self.timeIntersection = 0
+        self.numIntersection = 0
+        self.timeAdjust = 0
+        self.numAdjust = 0
 
+    # zonotope E
     def reach_E(self):
         E = []
         for i in range(self.max_step):
@@ -53,34 +68,30 @@ class Reachability1:
                 E.append(E[-1] + self.A_i_B_U[i])
         return E
 
-    def E_bound(self):
-        E_low = []
+    def bound_E(self):
+        E_lo = []
         E_up = []
         for i in range(self.max_step):
-            low = []
+            lo = []
             up = []
             for j in range(self.A.shape[0]):
-                low.append(self.E[i].support(self.l[j], -1))
+                lo.append(self.E[i].support(self.l[j], -1))
                 up.append(self.E[i].support(self.l[j]))
-            E_low.append(low)
+            E_lo.append(lo)
             E_up.append(up)
-        return E_low, E_up
+        return E_lo, E_up
 
-    def reach_D1(self):
-        D1 = []
-        for i in range(self.max_step):
-            D1.append(self.targetz)
-        return D1
-
+    # zonotope D4
     def reach_D4(self):
         D4 = []
         for i in range(self.max_step):
             if i == 0:
-                D4.append(self.p)
+                D4.append(self.P)
             else:
-                D4.append(D4[-1] + self.A_i[i - 1] @ self.p)
+                D4.append(D4[-1] + self.A_i[i - 1] @ self.P)
         return D4
 
+    # update D2, D3
     def reach_D23(self, x_hat, theta):
         D2 = []
         D3 = []
@@ -89,342 +100,932 @@ class Reachability1:
             D3.append(self.A_i[i] @ theta)
         return D2, D3
 
+    # bound of box D
     def D_bound(self):
-        start = time.time()
-        D_low = []
+        D_lo = []
         D_up = []
+        sNorm = []
         for i in range(self.max_step):
             second = self.D2[i] + self.D3[i] + self.D4[i]
-            first = self.D1[i]
-            low, up = self.minkowski_dif(first, second)
-            D_low.append(low)
+            sNorm.append(self.getSNorm(self.D3[i]))
+            lo, up = self.minkowski_dif(self.t_lo, self.t_up, second)
+            D_lo.append(lo)
             D_up.append(up)
-        end = time.time()
-        print("D_bound", end - start)
-        return D_low, D_up
+        self.sNorm = sNorm
+        return D_lo, D_up
 
-    def D_bound_box(self):
-        D_boxes = []
-        for i in range(self.max_step):
-            second = self.D2[i] + self.D3[i] + self.D4[i]
-            first = self.D1[i]
-            low, up = self.minkowski_dif(first, second)
-            for j in range(self.A.shape[0]):
-                if low[j] >= up[j]:
-                    print("empty set at ", i)
-                    continue
-            D_boxes.append(Zonotope.from_box(np.array(low), np.array(up)))
-        return D_boxes
-
-    def check_opt_intersect(self, D_boxes):
-        results = []
-        for i in range(self.max_step):
-            startTime = time.time()
-            results.append(self.opt_intersect(self.E[i], D_boxes[i]))
-            endTime = time.time()
-            print("ith: ", i)
-            print("time", endTime - startTime)
-        return results
-
-    def opt_intersect(self, first: Zonotope, second: Zonotope):
-        alpha = cp.Variable([first.g.shape[1]], name="alpha")
-        beta = cp.Variable([second.g.shape[1]], name="beta")
-        x = cp.Variable()
-
-        obj = x
-
-        constraints = [
-            (alpha[k] <= 1) for k in range(first.g.shape[1])
-        ]
-        constraints += [
-            (alpha[k] >= -1) for k in range(first.g.shape[1])
-        ]
-        constraints += [
-            (beta[k] <= 1) for k in range(second.g.shape[1])
-        ]
-        constraints += [
-            (beta[k] >= -1) for k in range(second.g.shape[1])
-        ]
-        constraints += [
-            first.c + first.g @ alpha == second.c + second.g @ beta
-        ]
-        constraints += [
-            x == 0
-        ]
-        problem = cp.Problem(cp.Minimize(obj), constraints)
-        result = problem.solve(solver=cp.SCIPY)
-        if np.isnan(result):
-            return False
-        else:
-            return True
-
-    def minkowski_dif(self, first: Zonotope, second: Zonotope):
-        D_low = []
-        D_up = []
+    # minkowski_dif between box and zonotope
+    def minkowski_dif(self, first_lo, first_up, second: Zonotope):
+        lo = np.zeros(self.A.shape[0])
+        up = np.zeros(self.A.shape[0])
         for i in range(self.A.shape[0]):
-            # D_low
-            temp1 = first.support(self.l[i], -1)
-            temp2 = second.support(self.l[i], -1)
-            D_low.append(self.target_low[i] - temp2)
+            lo[i] = first_lo[i] - second.support(self.l[i], -1)
+            up[i] = first_up[i] - second.support(self.l[i])
+        return lo, up
 
-            # D_up
-            temp3 = first.support(self.l[i])
-            temp4 = second.support(self.l[i])
-            D_up.append(self.target_up[i] - temp4)
-
-        return D_low, D_up
-
-    # check the intersection of D and E for one time step
-    def check_intersection(self, i):
-        inter = []
-        dis = []
-        # print("check intersection", i)
-        # print("D_low[i]", self.D_low[i])
-        # print("D_up[i]", self.D_up[i])
-        # print("E_low[i]", self.E_low[i])
-        # print("E_up[i]", self.E_up[i])
-        for j in range(self.A.shape[0]):
-            if self.D_low[i][j] > self.D_up[i][j]:
-                # print("self.D_low[i][j] > self.D_up[i][j]", self.D_low[i][j], self.D_up[i][j])
-                # D is empty set
-                inter.append(0)
-            # elif self.E_up[i][j] >= self.D_low[i][j] and self.E_low[i][j] <= self.D_up[i][j]:
-            #     # intersection E lower than D
-            #     inter.append(1)
-            elif self.E_up[i][j] < self.D_low[i][j]:
-                # no intersection E lower than D
-                inter.append(-1)
-            # elif self.E_low[i][j] <= self.D_up[i][j] and self.E_up[i][j] >= self.D_low[i][j]:
-            #     # intersection E higher than D
-            #     inter.append(1)
-            elif self.E_low[i][j] > self.D_up[i][j]:
-                # no intersection E higher than D
-                inter.append(-1)
-            # elif self.E_low[i][j] > self.D_low[i][j] and self.E_up < self.D_up:
-            #     inter.append(1)
-            else:
-                inter.append(1)
-
-            dis.append(self.D_up[i][j] - self.D_low[i][j])
-        return inter, dis
-
-    # check the recoverability in later max steps
-    def recoverability(self, x_hat: Zonotope, theta: Zonotope):
-        result = []
-        intersection = []
-        distance = []
+    # calculate k level recoverability of the current system
+    def k_level(self, x_hat, theta):
         self.D2, self.D3 = self.reach_D23(x_hat, theta)
-        self.D_low, self.D_up = self.D_bound()
-        for i in range(self.max_step):
-            inter, dis = self.check_intersection(i)
-            print(i)
-            print("inter", inter)
-            intersection.append(inter)
-            distance.append(dis)
+        self.D_lo, self.D_up = self.D_bound()
 
-        # check recoverability
+        ks = np.zeros(self.max_step)
+        adjustDirs = []
+        scopes = []
+        inOrOuts = []
+        iterations = []
+        intersectCases = []
+        self.emptySet = np.zeros(self.max_step)
         for i in range(self.max_step):
-            t = 1
+            # ks[i], adjustDir, iteration = self.check_intersection(i)
+            ks[i], adjustDir, inOrOut, scope, iteration, intersectCase = self.check_intersectionNew(i)
+            # if i <= 5:
+            #     ks[i] = 0
+            adjustDirs.append(adjustDir)
+            inOrOuts.append(inOrOut)
+            scopes.append(scope)
+            iterations.append(iteration)
+            intersectCases.append(intersectCase)
+        self.reach = ks
+        print("ks", ks)
+        self.adjustDirs = adjustDirs
+        self.inOrOuts = inOrOuts
+        self.scopes = scopes
+        self.intersectCases = intersectCases
+
+        k = np.sum(ks)
+        if k == 0:
+            return 0, 0, 0
+
+        start = 0
+        end = 0
+        for i in range(self.max_step):
+            if ks[i] == 1 and start == 0:
+                start = i
+            if ks[i] == 0 and start == 1:
+                end = i - 1
+            if i == self.max_step - 1 and end == 0 and start != 0:
+                end = self.max_step - 1
+
+        return k, start, end
+
+    # check dth step's intersection
+    # return 1/0: intersect or not, distance: closest point's distance
+    def check_intersection(self, d):
+        ord = self.E[d].g.shape[1]
+
+        # pre-check before explore
+        if self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d]):
+            # return 0, np.zeros(self.A.shape[0]), 0
+            return 0, np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), 0
+        new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+
+        start = self.E[d].c
+        next = start
+        center = (new_lo + new_up) / 2
+        dir = np.zeros(ord)
+        move = np.zeros(ord)
+        usedout = 1
+        i = 0
+        iteration = 0
+
+        while i < ord:
+            # t = self.getT(self.closestPoint(new_lo, new_up, start) - start, self.E[d].g[:, i])
+            t = self.getT(center - start, self.E[d].g[:, i])
+            # t = getT(box.c - start, temp.g[:, i])
+            # print("t", t)
+            if not self.newEqual(t, 0):
+                # usedout = 0
+                if t + dir[i] >= 1:
+                    move[i] = 1 - dir[i]
+                    dir[i] = 1
+                elif t + dir[i] <= -1:
+                    move[i] = -1 - dir[i]
+                    dir[i] = -1
+                elif -1 <= t + dir[i] <= 1:
+                    move[i] = t
+                    dir[i] = t + dir[i]
+                # print("dir", i, dir[i])
+                # print("move", move[i])
+                if not self.newEqual(move[i], 0):
+                    usedout = 0
+                next = start + move[i] * self.E[d].g[:, i]
+                # print(next)
+                # distance = np.linalg.norm(next - closestPoint(new_low, new_up, next))
+                # print("distance", distance)
+                re = self.checkinBox(new_lo, new_up, next)
+                if re == 1:
+                    # print("intersect point", next)
+                    # return 1, self.adjustDir(new_lo, new_up, next), iteration
+                    adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+                    return 1, adjustDir, inOrOut, scope, iteration
+                # f_low, f_up, signal = checkPass(start, next, box.c, boxG)
+                # if signal != -1:
+                #     # print("pass intersection", start, next)
+                #     break
+                start = next
+
+            if i == ord - 1:
+                # print("one iteration")
+                iteration += 1
+                if iteration >= 50:
+                    break
+                if usedout == 0:
+                    i = -1
+                    usedout = 1
+                else:
+                    break
+            i += 1
+        # return 0, self.adjustDir(new_lo, new_up, next), iteration
+        adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+        return 0, adjustDir, inOrOut, scope, iteration
+
+    def check_intersectionNew(self, d):
+        ord = self.E[d].g.shape[1]
+        intersectCase = 1
+
+        t = self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+        # pre-check before explore
+        if t == -1:
+            adjustDir = self.emtpySetDir(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+            self.emptySet[d] = 1
+            intersectCase = 3
+            # return 0, adjustDir, inOrOut, scope, 0
+            return 0, adjustDir, np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), 0, intersectCase
+        elif t == 1:
+            adjustDir, inOrOut, scope = self.adjustDirsNN(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+            intersectCase = 0
+            return 0, adjustDir, inOrOut, scope, 0, intersectCase
+        new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+
+        start = self.E[d].c
+        next = start
+        center = (new_lo + new_up) / 2
+        dir = np.zeros(ord)
+        move = np.zeros(ord)
+        usedout = 1
+        i = 0
+        iteration = 0
+        result = 0
+
+        while i < ord:
+            # t = self.getT(self.closestPoint(new_lo, new_up, start) - start, self.E[d].g[:, i])
+            t = self.getT(center - start, self.E[d].g[:, i])
+            if not self.newEqual(t, 0):
+                if t + dir[i] >= 1:
+                    move[i] = 1 - dir[i]
+                    dir[i] = 1
+                elif t + dir[i] <= -1:
+                    move[i] = -1 - dir[i]
+                    dir[i] = -1
+                elif -1 <= t + dir[i] <= 1:
+                    move[i] = t
+                    dir[i] = t + dir[i]
+                if not self.newEqual(move[i], 0):
+                    usedout = 0
+                next = start + move[i] * self.E[d].g[:, i]
+                # distance = np.linalg.norm(next - closestPoint(new_low, new_up, next))
+                # print("distance", distance)
+                re = self.checkinBox(new_lo, new_up, next)
+                if re == 1:
+                    # print("intersect point", next)
+                    # return 1, self.adjustDir(new_lo, new_up, next), iteration
+                    result = 1
+                    intersectCase = 2
+                    # adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+                    # return 1, adjustDir, inOrOut, scope, iteration
+                start = next
+
+            if i == ord - 1:
+                # print("one iteration")
+                iteration += 1
+                if iteration >= 50:
+                    break
+                if usedout == 0:
+                    i = -1
+                    usedout = 1
+                else:
+                    break
+            i += 1
+        # return 0, self.adjustDir(new_lo, new_up, next), iteration
+        adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+        return result, adjustDir, inOrOut, scope, iteration, intersectCase
+
+    # projection of the line to the generator
+    def getT(self, a, b):
+        # b is generator
+        k = np.dot(a, b) / np.dot(b, b)
+        return k
+
+    # the closest point in the box to the current point
+    def closestPoint(self, low, up, point):
+        re = np.zeros(low.shape[0])
+        for i in range(low.shape[0]):
+            if low[i] <= point[i] <= up[i]:
+                re[i] = point[i]
+            elif point[i] < low[i]:
+                re[i] = low[i]
+            elif point[i] > up[i]:
+                re[i] = up[i]
+        return re
+
+    # check a point in the box
+    def checkinBox(self, low, up, point):
+        result = 1
+        for i in range(low.shape[0]):
+            # if point[i] <= low[i] - 0.001:
+            if point[i] < low[i]:
+                result = 0
+                return result
+            # if point[i] >= up[i] + 0.001:
+            if point[i] > up[i]:
+                result = 0
+                return result
+        return result
+
+    def checkEmpty(self, lo, up):
+        for i in range(self.A.shape[0]):
+            if lo[i] >= up[i]:
+                return 1
+        return 0
+
+    def preCheck(self, D_lo, D_up, E_lo, E_up):
+        for i in range(self.A.shape[0]):
+            # empty set
+            if D_lo[i] >= D_up[i]:
+                return -1
+            # impossible intersection
+            if D_lo[i] >= E_up[i] or D_up[i] <= E_lo[i]:
+                return 1
+        return 0
+
+    def cropBox(self, D_lo, D_up, E_lo, E_up):
+        new_lo = []
+        new_up = []
+        for i in range(self.A.shape[0]):
+            if E_lo[i] <= D_lo[i] and E_up[i] >= D_up[i]:
+                new_up.append(D_up[i])
+                new_lo.append(D_lo[i])
+            elif E_lo[i] >= D_lo[i] and E_up[i] <= D_up[i]:
+                new_up.append(E_up[i])
+                new_lo.append(E_lo[i])
+            elif E_lo[i] <= D_lo[i] and E_up[i] <= D_up[i]:
+                new_up.append(E_up[i])
+                new_lo.append(D_lo[i])
+            elif E_lo[i] >= D_lo[i] and E_up[i] >= D_up[i]:
+                new_up.append(D_up[i])
+                new_lo.append(E_lo[i])
+
+        new_lo = np.array(new_lo)
+        new_up = np.array(new_up)
+        return new_lo, new_up
+
+    def newEqual(self, a, b):
+        if -0.001 <= a - b <= 0.001:
+            return 1
+        else:
+            return 0
+
+    def adjustDir(self, D_lo, D_up, point):
+        adjustDir = np.zeros(self.A.shape[0])
+        for i in range(self.A.shape[0]):
+            if point[i] <= D_lo[i]:
+                adjustDir[i] = point[i] - D_lo[i]
+            elif point[i] >= D_up[i]:
+                adjustDir[i] = point[i] - D_up[i]
+        return adjustDir
+
+    # inOrDe 0: decrease, 1: increase
+    def adjustTau(self, pOrN, start, end):
+        self.numAdjust += 1
+        startTime = time.time()
+        # box's center movements
+        deltaCs = []
+        # box's edge movements
+        deltaEs = []
+        # corresponding steps
+        for d in range(self.max_step):
+            deltaC = []
+            deltaE = []
+            # corresponding support vectors
             for j in range(self.A.shape[0]):
-                if intersection[i][j] != 1:
-                    t = 0
-            result.append(t)
-        self.result = result
-        self.intersection = intersection
-        self.distance = distance
+                t = np.zeros(self.A.shape)
+                for i in range(len(pOrN)):
+                    t += self.A_i[i] * pOrN[-i]
+                t = 0.5 * self.A_i[d] @ t
+                t = t.T @ self.l[j]
+                deltaC.append(t.T)
 
-    def k_level(self, x_hat: Zonotope, theta: Zonotope):
-        self.recoverability(x_hat, theta)
+                # select one column in 1/2 A_i
+                b = (0.5 * self.A_i[d].T)[:, j]
+                # corresponding generators
+                for i in range(self.A.shape[0]):
+                    b[i] = b[i] * self.sNorm[d][j][i]
+                sum_A_i = np.zeros(self.A.shape)
+                for i in range(len(pOrN)):
+                    sum_A_i += self.A_i[i]
+                # select one row in sum_A_i
+                a = sum_A_i[j]
+                deltaE.append(np.sum(b) * a)
+            deltaCs.append(deltaC)
+            deltaEs.append(deltaE)
 
-        # startTimeBox = time.time()
-        # # opt intersection
-        # D_boxes = self.D_bound_box()
-        # endTimeBox = time.time()
-        # print("timeBox", endTimeBox - startTimeBox)
-        #
-        # startTimeOpt = time.time()
-        # opt_results = self.check_opt_intersect(D_boxes)
-        # endTimeOpt = time.time()
-        # print("timeSumOpt", endTimeOpt - startTimeOpt)
-        # print("opt_results", opt_results)
+        self.deltaCs = deltaCs
+        self.deltaEs = deltaEs
 
-        print("results", self.result)
-        k1 = 0
-        start1 = -1
-        end1 = -1
-        k2 = 0
-        start2 = -1
-        end2 = -1
-        for i in range(self.max_step):
-            if self.result[i] == 1:
-                if k1 == 0:
-                    start1 = i
-                    k1 = k1 + 1
-                elif k1 != 0 and end1 == -1:
-                    k1 = k1 + 1
-                elif k1 != 0 and k2 == 0:
-                    start2 = i
-                    k2 = k2 + 1
-                elif k2 != 0:
-                    k2 = k2 + 1
-            elif self.result[i] == 0:
-                # last intersect
-                if k1 != 0 and end1 == -1:
-                    end1 = i - 1
-                elif k2 != 0 and end2 == -1:
-                    end2 = i - 1
-
-        if k1 == 1 and k2 != 0:
-            if end2 == -1:
-                end2 = self.max_step - 1
-            return k2, start2, end2
+        if start != 0:
+            objStep = start - 1
+            deltaTau = self.getDeltaTau(objStep)
         else:
-            if end1 == -1 and k1 != 0:
-                end1 = self.max_step - 1
-            return k1, start1, end1
+            objStep = self.max_step - 1
+            for i in range(self.max_step):
+                if np.any(self.adjustDirs[i]):
+                    objStep = i
+            # deltaTau = self.getDeltaTau(objStep)
+            deltaTau = self.getDeltaTau(objStep)
+        endTime = time.time()
+        self.timeAdjust += endTime - startTime
+        print("avg adjust time: ", self.timeAdjust / self.numAdjust)
+        return deltaTau
 
-        # for i in range(self.max_step):
-        #     if self.result[i] == 1:
-        #         if k == 0:
-        #             start = i
-        #         k = k + 1
-        #     elif k > 0 and self.result[i] == 0:
-        #         # intersect
-        #         end = i - 1
-        #         return k, start, end
-        # if k == 0:
-        #     # not intersect at all
-        #     return k, start, end
-        # else:
-        #     # intersect and end at finally
-        #     return k, start, self.max_step - 1
+    def adjustTauNew(self, pOrN, start, end, inOrDe, detector):
+        self.detector = detector
+        self.numAdjust += 1
+        startTime = time.time()
+        # box's center movements
+        deltaCs = []
+        # box's edge movements
+        deltaEs = []
+        # corresponding steps
+        for d in range(self.max_step):
+            deltaC = []
+            deltaE = []
+            # corresponding support vectors
+            for j in range(self.A.shape[0]):
+                t = np.zeros(self.A.shape)
+                for i in range(len(pOrN)):
+                    t += self.A_i[i] * pOrN[-i]
+                t = 0.5 * self.A_i[d] @ t
+                t = t.T @ self.l[j]
+                deltaC.append(t.T)
 
-    def adjust_new(self, k, start, end, klevel):
-        delta_theta = np.zeros(self.A.shape[0])
-        if k < klevel:
-            # print("k, start, end", k, start, end)
-            # print("self.result", self.result)
-            # decrease theta
-            if end == -1 and start == -1:
-                # not intersection at all
-                isempty = -1
+                # select one column in 1/2 A_i
+                b = (0.5 * self.A_i[d].T)[:, j]
+                # corresponding generators
+                for i in range(self.A.shape[0]):
+                    b[i] = b[i] * self.sNorm[d][j][i]
+                sum_A_i = np.zeros(self.A.shape)
+                for i in range(len(pOrN)):
+                    sum_A_i += self.A_i[i]
+                # select one row in sum_A_i
+                a = sum_A_i[j]
+                deltaE.append(np.sum(b) * a)
+            deltaCs.append(deltaC)
+            deltaEs.append(deltaE)
 
-                # search for the empty dimension
-                # D become empty before intersect
-                for i in range(self.max_step):
-                    for j in range(self.A.shape[0]):
-                        if self.D_low[i][j] >= self.D_up[i][j]:
-                            isempty = i
-                            delta_theta[j] = -0.1
-                            # print("D become empty before intersect")
-                    if isempty != -1:
-                        break
+        self.deltaCs = deltaCs
+        self.deltaEs = deltaEs
 
-                # D does not become empty before max_step
-                if isempty == -1:
-                    for j in range(self.A.shape[0]):
-                        if self.D_low[self.max_step - 1][j] >= self.E_up[self.max_step - 1][j] or \
-                                self.D_up[self.max_step - 1][j] <= self.E_low[self.max_step -1][j]:
-                            delta_theta[j] = -0.1
-                            # print("D does not become empty before max_step")
-
-            elif end == self.max_step - 1 and start > -1:
-                # intersect and D does not become empty before max_step
-                for j in range(self.A.shape[0]):
-                    if self.D_low[start - 1][j] >= self.E_up[start - 1][j] or \
-                            self.D_up[start - 1][j] <= self.E_low[start - 1][j]:
-                        delta_theta[j] = -0.1
-                        # print("intersect and D does not become empty before max_step")
-            elif end > -1 and start > -1:
-                # intersect and D become empty before max_step
-                # search for the empty dimension
-                flag_delta = 0
-                for j in range(self.A.shape[0]):
-                    if self.D_low[end + 1][j] >= self.D_up[end + 1][j]:
-                        delta_theta[j] = -0.1
-                        flag_delta = 1
-                        # print("# intersect and D become empty before max_step")
-                if flag_delta == 0:
-                    delta_theta[2] = -0.1
-                    # print("unexpect situation")
-                    # for j in range(self.A.shape[0]):
-                    #     delta_theta[j] = -0.1
-            else:
-                print("unexpect situation")
-
-        else:
-            # increase theta
-            delta_theta[2] = 0.1
-            # for j in range(self.A.shape[0]):
-            #     delta_theta[j] = 0.1
-
-        self.delta_theta = delta_theta
-        return delta_theta
-
-
-
-    def adjust(self, k, start, end, klevel):
-        delta_theta = np.zeros(self.A.shape[0])
-        if k < klevel:
+        if inOrDe == 0:
+            # if start == 0:
+            #     deltaTau = np.zeros(self.A.shape[0])
+            #     a = np.argmax(self.detector.tao)
+            #     if self.detector.tao[a] > self.detector.iniTao[a]:
+            #         # force decrease tau
+            #         # deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.5
+            #         deltaTau[a] = (self.detector.tao[a] - 0.025) * 0.2
+            #         print("force decrease tau")
+            #         # print("tao", self.detector.tao)
+            #         return deltaTau
             # increase k
-            # not intersection at all
-            if end == 0:
-                isempty = 0
-                emptydim = np.zeros(self.A.shape[0])
-                for i in range(self.max_step):
-                    if isempty == 0:
-                        for j in range(self.A.shape[0]):
-                            if self.D_low[i][j] >= self.D_up[i][j]:
-                                isempty = 1
-                                emptydim[j] = 1
-                for j in range(self.A.shape[0]):
-                    if emptydim[j] == 1:
-                        delta_theta[j] = -0.1
-                    else:
-                        delta_theta[j] = 0
-
-                if isempty == 0:
-                    for j in range(self.A.shape[0]):
-                        if self.D_low[i][j] >= self.E_up[i][j] or self.D_low[i][j] >= self.E_up[i][j]:
-                            delta_theta[j] = -0.1
-
-                flag = 0
-                for j in range(self.A.shape[0]):
-                    if delta_theta[j] != 0:
-                        flag = 1
-                if flag == 0:
-                    for j in range(self.A.shape[0]):
-                        delta_theta[j] = -0.1
-
-                return delta_theta
+            if start != 0:
+                if end != self.max_step -1 and self.emptySet[end + 1] != 1:
+                    objStep = end + 1
+                else:
+                    objStep = start - 1
+                # deltaTau = self.getDeltaTauIncreaseK(objStep)
+                # deltaTau = self.getDeltaTauIncreaseDir(objStep)
+                deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
+                # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
             else:
-                i = start - 1
-                for j in range(self.A.shape[0]):
-                    dist = self.E_up[i][j] - self.D_low[i][j]
-                    dist = 2 * dist / self.distance[i][j]
-                    # if dist <= -1 or dist > 0:
-                    #     dist = 0
-                    if dist > 0:
-                        dist = 0
-                    else:
-                        dist = -0.1
-                    delta_theta[j] = dist
+                objStep = 0
+                # objStep = self.max_step - 1
+                exist = 0
+                for i in range(self.max_step):
+                    # Probable intersection
+                    if np.any(self.inOrOuts[i]):
+                        objStep = i
+                        exist = 1
+                        # break
+                if exist == 0:
+                    for i in range(self.max_step):
+                        if np.any(self.adjustDirs[i]) and self.emptySet[i] == 0:
+                            objStep = i
+                    if objStep == 0:
+                        for i in range(self.max_step):
+                            if i <= objStep:
+                                continue
+                            # empty set
+                            if np.any(self.adjustDirs[i]) and self.emptySet[i] == 1:
+                                objStep = i
+                                break
 
+                # deltaTau = self.getDeltaTau(objStep)
+                # deltaTau = self.getDeltaTauIncreaseK(objStep)
+                # deltaTau = self.getDeltaTauIncreaseDir(objStep)
+                deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
+                # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
+            # print("objstep", objStep)
         else:
             # decrease k
-            for j in range(self.A.shape[0]):
-                delta_theta[j] = 0.1
-            # i = start + 1
-            # for j in range(self.A.shape[0]):
-            #     dist = self.E_up[i][j] - self.D_low[i][j]
-            #     dist = 2 * dist / self.distance[i][j]
-            #     if dist < 0:
-            #         dist = 0
-            #     else:
-            #         dist = 0.1
-            #     # if dist >= 1 or dist < 0:
-            #     #     dist = 0
-            #     delta_theta[j] = dist
+            objStep = start + 1
+            # objStep = end - 7
+            # deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
+            # deltaTau = self.getDeltaTauDecreaseKNew(objStep)
+            # deltaTau = self.getDeltaTauDecreaseK(objStep)
+            deltaTau = self.getDeltaTauDecreaseKDirNew(objStep)
 
-        self.delta_theta = delta_theta
-        return delta_theta
+        endTime = time.time()
+        self.timeAdjust += endTime - startTime
+        # print("avg adjust time: ", self.timeAdjust / self.numAdjust)
+        return deltaTau
+
+
+    def getSNorm(self, D: Zonotope):
+        sNorms = []
+        # corresponding support vectors
+        for i in range(self.A.shape[0]):
+            sNorm = []
+            t = D.g.T @ self.l[i]
+            # corresponding generators
+            for j in range(self.A.shape[0]):
+                if t[j] >= 0:
+                    sNorm.append(1)
+                else:
+                    sNorm.append(-1)
+            sNorms.append(sNorm)
+        return sNorms
+
+    def getDeltaTau(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        adjustDim = np.zeros(self.A.shape[0])
+
+        for i in range(self.A.shape[0]):
+            if self.adjustDirs[d][i] != 0:
+                adjustDim[i] = 1
+        numDim = int(np.sum(adjustDim))
+
+        # number of coefficient = number of dimension which need to be adjusted
+        coefficient = np.zeros([numDim, numDim])
+        newAdjustDir = np.zeros(numDim)
+        k = 0
+        for i in range(self.A.shape[0]):
+            # delta C + delta E
+            if self.adjustDirs[d][i] > 0:
+                newAdjustDir[k] = self.adjustDirs[d][i]
+                for j in range(numDim):
+                    # coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
+                    coefficient[k][j] = self.deltaCs[d][i][j] - self.deltaEs[d][i][j]
+            # delta C - delta E
+            elif self.adjustDirs[d][i] < 0:
+                newAdjustDir[k] = self.adjustDirs[d][i]
+                for j in range(numDim):
+                    # coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
+                    coefficient[k][j] = self.deltaCs[d][i][j] + self.deltaEs[d][i][j]
+        result = np.linalg.pinv(coefficient) @ newAdjustDir
+        k = 0
+        for i in range(self.A.shape[0]):
+            if adjustDim[i] == 0:
+                deltaTau[i] = 0
+            else:
+                deltaTau[i] = result[k]
+                k += 1
+
+        return deltaTau
+
+    # get delta tau for increasing recoveryability k
+    def getDeltaTauIncreaseK(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        # for i in range(self.A.shape[0]):
+        #     if self.detector.tao[i] > self.detector.iniTao[i] * 1.05:
+        #         deltaTau[int(np.argmax(self.detector.tao))] = (self.detector.tao[i] - self.detector.iniTao[i]) / 2
+        #         return deltaTau
+
+        print("inOrOuts", self.inOrOuts[d])
+        print("self.adjustDirs[d]", self.adjustDirs[d])
+        print("empty set", self.emptySet[d])
+        if not np.any(self.inOrOuts[d]):
+            print("no in")
+        if np.sum(self.inOrOuts[d]) != 0:
+            numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+            numDim = int(numDim)
+            adjustDim = []
+
+            for i in range(self.A.shape[0]):
+                if self.inOrOuts[d][i] == 0:
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+        else:
+            numDim = 0
+            adjustDim = []
+            for i in range(self.A.shape[0]):
+                if self.adjustDirs[d][i] != 0:
+                    numDim += 1
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+
+        # number of coefficient = number of dimension which need to be adjusted
+        coefficient = np.zeros([numDim, numDim])
+        newAdjustDir = np.zeros(numDim)
+        k = 0
+        for i in range(self.A.shape[0]):
+            # delta C + delta E
+            if self.adjustDirs[d][i] > 0 and self.inOrOuts[d][i] == 0:
+                newAdjustDir[k] = self.adjustDirs[d][i]
+                for j in range(numDim):
+                    # coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
+                    coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] + self.deltaEs[d][i][adjustDim[j]]
+                k += 1
+            # delta C - delta E
+            elif self.adjustDirs[d][i] < 0 and self.inOrOuts[d][i] == 0:
+                newAdjustDir[k] = self.adjustDirs[d][i]
+                for j in range(numDim):
+                    # coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
+                    coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] - self.deltaEs[d][i][adjustDim[j]]
+                k += 1
+        result = np.linalg.inv(coefficient) @ newAdjustDir
+        for i in range(np.shape(result)[0]):
+            deltaTau[adjustDim[i]] = result[i]
+
+        adjustLarge = 0
+        for i in range(numDim):
+            if int(adjustDim[i]) == np.argmax(self.detector.tao):
+                adjustLarge = 1
+        if adjustLarge == 0:
+            deltaTau[int(np.argmax(self.detector.tao))] = np.max(self.detector.tao) * 0.2
+        return deltaTau
+
+    def getDeltaTauIncreaseKNew(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        print("inOrOuts", self.inOrOuts[d])
+        print("self.adjustDirs[d]", self.adjustDirs[d])
+        print("empty set", self.emptySet[d])
+        # probable intersection
+        if self.intersectCases[d] == 1:
+            print("probable intersection")
+            numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+            numDim = int(numDim)
+            supDim = []
+            for i in range(self.A.shape[0]):
+                if self.inOrOuts[d][i] == 0:
+                    supDim.append(i)
+            supDim = np.array(supDim)
+
+        # empty set or impossible intersect
+        else:
+            print("empty set or impossible intersect")
+            supDim = []
+            for i in range(self.A.shape[0]):
+                if self.adjustDirs[d][i] != 0:
+                    supDim.append(i)
+            supDim = np.array(supDim)
+            numDim = int(supDim.shape[0])
+
+        coefficient = np.zeros([numDim, self.A.shape[0]])
+        absCoeff = np.zeros([numDim, self.A.shape[0]])
+        newAdjustDir = np.zeros(numDim)
+        for i in range(supDim.shape[0]):
+            # delta C + delta E
+            if self.adjustDirs[d][i] > 0:
+                # 此处i的取值有问题
+                newAdjustDir[i] = self.adjustDirs[d][supDim[i]]
+                for j in range(self.A.shape[0]):
+                    coefficient[i][j] = self.deltaCs[d][supDim[i]][j] + self.deltaEs[d][supDim[i]][j]
+                    absCoeff[i][j] = np.abs(coefficient[i][j])
+            # delta C - delta E
+            elif self.adjustDirs[d][i] < 0:
+                newAdjustDir[i] = self.adjustDirs[d][supDim[i]]
+                for j in range(self.A.shape[0]):
+                    coefficient[i][j] = self.deltaCs[d][supDim[i]][j] - self.deltaEs[d][supDim[i]][j]
+                    absCoeff[i][j] = np.abs(coefficient[i][j])
+
+        newCoeff = np.zeros([numDim, numDim])
+        adjustDim = np.zeros(numDim)
+        for i in range(numDim):
+            adjustDim[i] = np.argmax(absCoeff[i])
+        for i in range(numDim):
+            for j in range(numDim):
+                newCoeff[i][j] = coefficient[i][int(adjustDim[j])]
+
+        result = np.linalg.pinv(newCoeff) @ (newAdjustDir * 1)
+        for i in range(numDim):
+            deltaTau[int(adjustDim[i])] = result[i]
+
+        # decrease largest tau
+        adjustLarge = 0
+        for i in range(numDim):
+            if int(adjustDim[i]) == np.argmax(self.detector.tao):
+                adjustLarge = 1
+        if adjustLarge == 0:
+            deltaTau[int(np.argmax(self.detector.tao))] = np.argmax(self.detector.tao) * 0.2
+        return deltaTau
+
+    def getDeltaTauIncreaseDir(self, d):
+        if np.sum(self.inOrOuts[d]) != 0:
+            numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+            numDim = int(numDim)
+            adjustDim = []
+
+            for i in range(self.A.shape[0]):
+                if self.inOrOuts[d][i] == 0:
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+        else:
+            numDim = 0
+            adjustDim = []
+            for i in range(self.A.shape[0]):
+                if self.adjustDirs[d][i] != 0:
+                    numDim += 1
+                    adjustDim.append(i)
+            adjustDim = np.array(adjustDim)
+        deltaTau = np.zeros(self.A.shape[0])
+        for i in range(numDim):
+            deltaTau[int(adjustDim[i])] = self.detector.tao[int(adjustDim[i])] * 0.1
+        coefficient = np.zeros([numDim, numDim])
+        newAdjustDir = np.zeros(numDim)
+        # k = 0
+        # for i in range(self.A.shape[0]):
+        #     # delta C + delta E
+        #     if self.adjustDirs[d][i] > 0 and self.inOrOuts[d][i] == 0:
+        #         newAdjustDir[k] = self.adjustDirs[d][i]
+        #         for j in range(numDim):
+        #             # coefficient[k][j] = self.deltaCs[d][k][j] - self.deltaEs[d][k][j]
+        #             coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] + self.deltaEs[d][i][adjustDim[j]]
+        #         k += 1
+        #     # delta C - delta E
+        #     elif self.adjustDirs[d][i] < 0 and self.inOrOuts[d][i] == 0:
+        #         newAdjustDir[k] = self.adjustDirs[d][i]
+        #         for j in range(numDim):
+        #             # coefficient[k][j] = self.deltaCs[d][k][j] + self.deltaEs[d][k][j]
+        #             coefficient[k][j] = self.deltaCs[d][i][adjustDim[j]] - self.deltaEs[d][i][adjustDim[j]]
+        #         k += 1
+        # for i in range(numDim):
+        #     deltaTau[adjustDim[i]] = newAdjustDir[i] / coefficient[i][i]
+        # result = np.linalg.inv(coefficient) @ newAdjustDir
+        # for i in range(np.shape(result)[0]):
+        #     deltaTau[adjustDim[i]] = result[i]
+        return deltaTau
+
+
+    def getDeltaTauIncreaseDirNew(self, d):
+        if np.sum(self.inOrOuts[d]) != 0:
+            numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
+            numDim = int(numDim)
+            supDim = []
+            for i in range(self.A.shape[0]):
+                if self.inOrOuts[d][i] == 0:
+                    supDim.append(i)
+            supDim = np.array(supDim)
+        else:
+            numDim = 0
+            supDim = []
+            for i in range(self.A.shape[0]):
+                if self.adjustDirs[d][i] != 0:
+                    numDim += 1
+                    supDim.append(i)
+            supDim = np.array(supDim)
+
+        deltaTau = np.zeros(self.A.shape[0])
+        coefficients = np.zeros([numDim, self.A.shape[0]])
+        newAdjustDir = np.zeros(numDim)
+        k = 0
+        for i in range(numDim):
+            # delta C + delta E
+            if self.adjustDirs[d][supDim[i]] > 0 and self.inOrOuts[d][supDim[i]] == 0:
+                newAdjustDir[i] = self.adjustDirs[d][supDim[i]]
+                coefficients[i] = self.deltaCs[d][supDim[i]] + self.deltaEs[d][supDim[i]]
+            # delta C - delta E
+            if self.adjustDirs[d][supDim[i]] < 0 and self.inOrOuts[d][supDim[i]] == 0:
+                newAdjustDir[i] = self.adjustDirs[d][supDim[i]]
+                coefficients[i] = self.deltaCs[d][supDim[i]] - self.deltaEs[d][supDim[i]]
+        for i in range(numDim):
+            coefficient = 0
+            sumTau = 0
+            if newAdjustDir[i] > 0:
+                for j in range(self.A.shape[0]):
+                    if coefficients[i][j] > 0:
+                        coefficient += coefficients[i][j]
+                        sumTau += self.detector.tao[i]
+                for j in range(self.A.shape[0]):
+                    if coefficients[i][j] > 0:
+                        deltaTau[j] += (coefficients[i][j] / coefficient + self.detector.tao[i] / sumTau) * 0.05 * self.detector.tao[j]
+            if newAdjustDir[i] < 0:
+                for j in range(self.A.shape[0]):
+                    if coefficients[i][j] < 0:
+                        coefficient += coefficients[i][j]
+                        sumTau += self.detector.tao[i]
+                for j in range(self.A.shape[0]):
+                    if coefficients[i][j] < 0:
+                        deltaTau[j] += (coefficients[i][j] / coefficient + self.detector.tao[i] / sumTau) * 0.05 * self.detector.tao[j]
+            maxTau = np.argmax(self.detector.tao)
+            if deltaTau[maxTau] == 0 or deltaTau[maxTau] < 0.1 * self.detector.tao[maxTau]:
+                deltaTau[maxTau] = 0.3 * self.detector.tao[maxTau]
+        return deltaTau
+
+    # get delta tau for decreasing recoveryability k
+    # only adjust one dimension
+    def getDeltaTauDecreaseK(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        deltaTau[np.argmin(self.scopes[d])] = self.detector.tao[np.argmin(self.scopes[d])] * 0.1
+        if np.argmin(self.scopes[d]) != np.argmin(self.detector.tao):
+            deltaTau[np.argmin(self.detector.tao)] = self.detector.tao[np.argmin(self.detector.tao)] * 0.1
+        # deltaTau[np.argmin(self.detector.tao)] = self.detector.tao[np.argmin(self.detector.tao)] * 0.1
+        # for i in range(self.A.shape[0]):
+        #     deltaTau[i] = self.detector.tao[i] * 0.1
+        return deltaTau
+
+        print("self.adjustDirs[d]", self.adjustDirs[d])
+        deltaTau = np.zeros(self.A.shape[0])
+        supDim = np.argmin(self.scopes[d])
+        argminTau = self.detector.minTau()
+
+        coefficient = np.zeros(self.A.shape[0])
+        if self.adjustDirs[d][supDim] > 0:
+            coefficient = np.array(self.deltaCs[d][supDim]) - np.array(self.deltaEs[d][supDim])
+        elif self.adjustDirs[d][supDim] < 0:
+            coefficient = np.array(self.deltaCs[d][supDim]) + np.array(self.deltaEs[d][supDim])
+        t = coefficient
+        for i in range(self.A.shape[0]):
+            t[i] = np.abs(t[i])
+        adjustDim = np.argmax(t)
+        # if adjustDim == argminTau and self.detector.tao[argminTau] <= 0.032/2:
+        #     t[adjustDim] = 0
+        #     adjustDim = np.argmax(t)
+        deltaTau[adjustDim] = self.adjustDirs[d][supDim] / coefficient[adjustDim]
+        return deltaTau
+
+    def getDeltaTauDecreaseKDirNew(self, d):
+        deltaTau = np.zeros(self.A.shape[0])
+        supDim = np.argmin(self.scopes[d])
+        coefficients = np.zeros(self.A.shape[0])
+        if self.adjustDirs[d][supDim] > 0:
+            coefficients = np.array(self.deltaCs[d][supDim]) - np.array(self.deltaEs[d][supDim])
+        elif self.adjustDirs[d][supDim] < 0:
+            coefficients = np.array(self.deltaCs[d][supDim]) + np.array(self.deltaEs[d][supDim])
+        coefficient = 0
+        sumTau = 0
+        for i in range(self.A.shape[0]):
+            if self.adjustDirs[d][supDim] > 0:
+                if coefficients[i] > 0:
+                    coefficient += coefficients[i]
+                    sumTau += self.detector.tao[i]
+            else:
+                if coefficients[i] < 0:
+                    coefficient += coefficients[i]
+                    sumTau += self.detector.tao[i]
+        for i in range(self.A.shape[0]):
+            if self.adjustDirs[d][supDim] > 0:
+                if coefficients[i] > 0:
+                    deltaTau[i] = (coefficients[i] / coefficient) * 0.1 * self.detector.tao[i]
+            else:
+                if coefficients[i] < 0:
+                    deltaTau[i] = (coefficients[i] / coefficient) * 0.1 * self.detector.tao[i]
+        minTau = np.argmin(self.detector.tao)
+        deltaTau[minTau] = 0.1 * self.detector.tao[minTau]
+        return deltaTau
+
+    def getDeltaTauDecreaseKAllDim(self, d):
+        print("self.adjustDirs[d]", self.adjustDirs[d])
+        deltaTau = np.zeros(self.A.shape[0])
+        f = self.adjustDirs[d]
+        for i in range(self.A.shape[0]):
+            f[i] = np.abs(self.adjustDirs[d][i])
+        supDim = np.argmin(f)
+        print("self.adjustDirs[d][supDim]", self.adjustDirs[d][supDim])
+        print("supdim", supDim)
+
+        coefficients = np.zeros(self.A.shape[0])
+        if self.adjustDirs[d][supDim] > 0:
+            coefficients = np.array(self.deltaCs[d][supDim]) - np.array(self.deltaEs[d][supDim])
+        elif self.adjustDirs[d][supDim] < 0:
+            coefficients = np.array(self.deltaCs[d][supDim]) + np.array(self.deltaEs[d][supDim])
+        print("coefficients", coefficients)
+
+        if self.adjustDirs[d][supDim] > 0:
+            existP = 0
+            for i in range(self.A.shape[0]):
+                if coefficients[i] > 0:
+                    existP = 1
+            if existP == 1:
+                adjustDim = np.argmax(coefficients)
+            else:
+                adjustDim = np.argmin(coefficients)
+        else:
+            existN = 0
+            for i in range(self.A.shape[0]):
+                if coefficients[i] < 0:
+                    existN = 1
+            if existN == 1:
+                adjustDim = np.argmin(coefficients)
+            else:
+                adjustDim = np.argmax(coefficients)
+
+        delta = self.adjustDirs[d][supDim] * 1.05 / coefficients[adjustDim]
+        deltaTau[adjustDim] = delta
+        return deltaTau
+
+    def getDeltaTauDecreaseKNew(self, d):
+        print("self.adjustDirs[d]", self.adjustDirs[d])
+        deltaTau = np.zeros(self.A.shape[0])
+
+        coefficients = np.zeros(self.A.shape)
+        supDim = np.zeros(self.A.shape[0])
+        delta = np.zeros(self.A.shape[0])
+        for i in range(self.A.shape[0]):
+            if self.adjustDirs[d][i] > 0:
+                coefficients[i] = np.array(self.deltaCs[d][i]) - np.array(self.deltaEs[d][i])
+            elif self.adjustDirs[d][i] < 0:
+                coefficients[i] = np.array(self.deltaCs[d][i]) + np.array(self.deltaEs[d][i])
+
+            if self.adjustDirs[d][i] > 0:
+                existP = 0
+                for j in range(self.A.shape[0]):
+                    if coefficients[i][j] > 0:
+                        existP = 1
+                if existP == 1:
+                    supDim[i] = np.argmax(coefficients[i])
+                else:
+                    supDim[i] = np.argmin(coefficients[i])
+            else:
+                existN = 0
+                for j in range(self.A.shape[0]):
+                    if coefficients[i][j] < 0:
+                        existN = 1
+                if existN == 1:
+                    supDim[i] = np.argmin(coefficients[i])
+                else:
+                    supDim[i] = np.argmax(coefficients[i])
+
+            delta[i] = self.adjustDirs[d][i] * 1.05 / coefficients[i][int(supDim[i])]
+        # print("coefficients", coefficients)
+        # print("delta", delta)
+        t = delta
+        for i in range(self.A.shape[0]):
+            if t[i] < 0:
+                t[i] = 100
+        adjustDim = np.argmin(t)
+
+        deltaTau[adjustDim] = delta[adjustDim]
+        return deltaTau
+
+
+    # probably intersection
+    def adjustDirNew(self, D_lo, D_up, point):
+        adjustDir = np.zeros(self.A.shape[0])
+        inOrOut = np.zeros(self.A.shape[0])
+        scope = np.zeros(self.A.shape[0])
+        for i in range(self.A.shape[0]):
+            if point[i] <= D_lo[i]:
+                adjustDir[i] = point[i] - D_lo[i]
+                inOrOut[i] = 0
+                scope[i] = 100
+            elif point[i] >= D_up[i]:
+                adjustDir[i] = point[i] - D_up[i]
+                inOrOut[i] = 0
+                scope[i] = 100
+            elif D_lo[i] < point[i] < D_up[i]:
+                inOrOut[i] = 1
+                if D_up[i] - point[i] > point[i] - D_lo[i]:
+                    adjustDir[i] = point[i] - D_lo[i]
+                else:
+                    adjustDir[i] = point[i] - D_up[i]
+                scope[i] = np.abs(adjustDir[i]) / (D_up[i] - D_lo[i])
+        return adjustDir, inOrOut, scope
+
+
+    def adjustDirsNN(self, D_lo, D_up, E_lo, E_up):
+        adjustDir = np.zeros(self.A.shape[0])
+        inOrOut = np.zeros(self.A.shape[0])
+        scope = np.zeros(self.A.shape[0])
+
+        for i in range(self.A.shape[0]):
+            if D_lo[i] >= E_up[i]:
+                adjustDir[i] = E_up[i] - D_lo[i]
+            elif D_up[i] <= E_lo[i]:
+                adjustDir[i] = E_lo[i] - D_up[i]
+            if -0.001 < adjustDir[i] < 0.001:
+                adjustDir[i] = 0
+            scope[i] = adjustDir[i] / (D_up[i] - D_lo[i])
+
+        return adjustDir, inOrOut, scope
+
+    def emtpySetDir(self, D_lo, D_up, E_lo, E_up):
+        adjustDir = np.zeros(self.A.shape[0])
+        for i in range(self.A.shape[0]):
+            if D_lo[i] > D_up[i]:
+                adjustDir[i] = D_up[i] - D_lo[i]
+                if -0.01 < adjustDir[i] < 0.01:
+                    if adjustDir[i] > 0:
+                        adjustDir[i] = 0.01
+                    else:
+                        adjustDir[i] = -0.01
+        return adjustDir

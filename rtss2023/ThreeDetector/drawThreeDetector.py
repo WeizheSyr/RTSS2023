@@ -21,7 +21,7 @@ max_index = sysI
 
 tauDim1 = 3
 tauDim2 = 1
-dim = 1
+dim = 0
 print("max_index: ", max_index)
 x_hat_arr1 = [x[dim] for x in y_hat]
 x_hat_arr = x_hat_arr1[:49]

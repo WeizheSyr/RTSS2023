@@ -1,32 +1,32 @@
 from Air_rlcSysAllDim import SystemALLDim
 from utils.Baseline import F16
+from utils.Baseline import Boeing
 from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-tao = np.ones(4) * 0.05
-# tao = [0.5] * 7
-detector = window(tao, 4, 10)
-exp = F16
+tao = np.ones(4) * 0.5
+detector = window(tao, 5, 10)
+exp = Boeing
 attack = [np.array([0.00])] * 30
 attack_duration = 30
-# attack = np.zeros(attack_duration)
 for i in range(attack_duration):
-    attack[i] = 0.005 * i
+    attack[i] = 0.05 * i
 
 sys = SystemALLDim(detector=detector, exp=exp, attack=attack, attack_duration=attack_duration)
 
 max_index = sys.i
 # print("max_index: ", max_index)
-x_hat_arr = [x[2] for x in sys.y_hat]
-x_tilda_arr = [x[2] for x in sys.y_tilda]
+x_hat_arr = [x[0] for x in sys.y_hat]
+x_tilda_arr = [x[0] for x in sys.y_tilda]
+# print(sys.y_tilda[150])
 x_low = []
 x_up = []
 for i in range(len(x_hat_arr) - 1):
-    x_low.append(x_hat_arr[i] + sys.theta[i][2][0])
-    x_up.append(x_hat_arr[i] + sys.theta[i][2][1])
-tao_arr0 = [x[2] for x in sys.taos]
-tao_arr1 = [x[3] for x in sys.taos]
+    x_low.append(x_hat_arr[i] + sys.theta[i][0][0])
+    x_up.append(x_hat_arr[i] + sys.theta[i][0][1])
+tao_arr0 = [x[0] for x in sys.taos]
+tao_arr1 = [x[0] for x in sys.taos]
 
 # print(sys.theta[:, 0, 0])
 # print(sys.theta[:, 0, 1])

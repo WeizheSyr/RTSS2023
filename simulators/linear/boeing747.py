@@ -92,13 +92,14 @@ class Boeing(Simulator):
 
 
 if __name__ == "__main__":
-    max_index = 2000
+    max_index = 200
     dt = 0.02
     ref = [np.array([15])] * (max_index + 1)
     noise = {
         'process': {
-            'type': 'white',
-            'param': {'C': np.eye(5) * 0.01}
+            'type': 'box_uniform',
+            'param': {'lo': np.ones(5) * -0.01,
+                      'up': np.ones(4) * 0.01}
         }
     }
     boeing = Boeing('test', dt, max_index, noise)
