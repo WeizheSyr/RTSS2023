@@ -16,7 +16,9 @@ A = np.array([[0, 0, 1, 0, 0],
 B = np.array([[0], [0.00729], [-0.475], [0.153], [0]])
 C = np.array([[1, 0, 0, 0, 0]])
 
-x_0 = np.array([10.0, 0.0, 0.0, 0.0, 0.0])
+# x_0 = np.array([10.0, 0.0, 0.0, 0.0, 0.0])
+x_0 = np.array([14.93992144, -3.41178082, 0.03680157, 13.78503916, 12.40544757])
+
 
 # control parameters
 R = np.array([[10]])
@@ -99,7 +101,7 @@ if __name__ == "__main__":
         'process': {
             'type': 'box_uniform',
             'param': {'lo': np.ones(5) * -0.01,
-                      'up': np.ones(4) * 0.01}
+                      'up': np.ones(5) * 0.01}
         }
     }
     boeing = Boeing('test', dt, max_index, noise)

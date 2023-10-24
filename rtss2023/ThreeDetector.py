@@ -130,7 +130,7 @@ class ThreeDetector:
                 if self.alertat == 0:
                     self.alertat = exp.model.cur_index
                 # return
-            if self.i >= 55:
+            if self.i >= 80:
                 return
 
             # fixed window-based detector

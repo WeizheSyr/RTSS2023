@@ -11,7 +11,8 @@ B = [[0.232], [0.0203], [0]]
 C = [[0, 0, 1]]
 D = [[0]]
 
-x_0 = np.array([0.0, 0.0, 0.0])
+# x_0 = np.array([0.0, 0.0, 0.0])
+x_0 = np.array([ 0.06278011, -0.00016815,  0.1694274 ])
 
 # control parameters
 KP = 1.13
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     noise = {
         'process': {
             'type': 'white',
-            'param': {'C': np.eye(3) * 0.00001}
+            'param': {'C': np.eye(3) * 0.0001}
         }
     }
     aircraft_pitch = AircraftPitch('test', dt, max_index, noise)
@@ -84,6 +85,7 @@ if __name__ == "__main__":
         aircraft_pitch.update_current_ref(ref[i])
         # attack here
         aircraft_pitch.evolve()
+
     # print results
     import matplotlib.pyplot as plt
 

@@ -5,14 +5,13 @@ from simulators.linear.platoon import Platoon
 
 
 class Authenticate:
-    def __init__(self, exp, n, p=0.002, v=0.002, inf=0.5):
+    def __init__(self, exp, n, p=0.0001, inf=0.0003):
         self.u = None
         self.y = None
         self.INF = inf
         self.m = exp.sysd.A.shape[0]    # dimension of A
         self.n = n                      # dimension of u
-        # self.timestep = self.m      # dimension of timestep
-        self.timestep = 4
+        self.timestep = self.m      # dimension of timestep
 
         # optimal value
         self.x = np.zeros(self.m)
@@ -22,18 +21,18 @@ class Authenticate:
 
         self.A = exp.sysd.A
         self.B = exp.sysd.B
-        self.delta = self.getDelta(p, v)
+        self.delta = self.getDelta(p)
         self.A_k = self.getA_k()
         self.U = None
 
-    def getDelta(self, p, v):
+    def getDelta(self, p):
         d = np.zeros([self.timestep, self.m])
         for i in range(self.timestep):
             if i == 0:
                 d[0] = np.zeros(self.m)
             else:
                 if i == 1:
-                    d[1] = np.ones(self.m) * 0.02
+                    d[1] = np.ones(self.m) * p
                 else:
                     d[i] = abs(self.A) @ d[i - 1] + d[1]
         return d
@@ -64,8 +63,6 @@ class Authenticate:
 
     def getAuth(self, att=0):
         self.U = self.getU()
-        # print('u', self.u)
-        # print('y', self.y)
 
         x = cp.Variable([self.m], name="x")
         gama = cp.Variable([self.m], name="gama", boolean=True)

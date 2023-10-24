@@ -42,10 +42,9 @@ class SystemALLDim:
 
         # recovery-ability
         self.pz = Zonotope.from_box(np.ones(5) * -0.01, np.ones(5) * 0.01)    # process noise
-        # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
         self.uz = Zonotope.from_box(np.array([-30]), np.array([30]))
-        self.target_low = np.array([-1000, -0.2, 0.05, -1])
-        self.target_up = np.array([1000, 0, 0.1, 1])
+        self.target_low = np.array([13, -4, -0.2, 12, -30])
+        self.target_up = np.array([16, 4, 0.2, 16, 30])
         self.klevel = 2                                                      # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
@@ -91,7 +90,7 @@ class SystemALLDim:
             if alarm:
                 print("alarm at", exp.model.cur_index)
                 return
-            if self.i >= 300:
+            if self.i >= 50:
                 return
 
             # authentication
@@ -174,7 +173,7 @@ class SystemALLDim:
                 self.originalK.append(kresult)
                 print('recovery-ability: ', self.klevels[-1])
 
-                while(False):
+                while(True):
                     if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
                         print("adjust threshold")
                         if self.klevels[-1] - self.klevel < 0:
@@ -199,16 +198,16 @@ class SystemALLDim:
                         # self.detector.continueWork()
                         return
 
-                    for k in range(2 + justAuth):
+                    for k in range(3 + justAuth):
                         # bound from detector
-                        theta1 = self.boundByDetector(self.i - 4 - justAuth + k + 1)
-                        t = theta1.reshape(1, 4, 2)  # only use detector estimation
-                        self.theta[self.i - 4 - justAuth + k + 1] = t
+                        theta1 = self.boundByDetector(self.i - 5 - justAuth + k + 1)
+                        t = theta1.reshape(1, 5, 2)  # only use detector estimation
+                        self.theta[self.i - 5 - justAuth + k + 1] = t
 
                     # bound from detector
                     theta1 = self.boundByDetector(self.i - 1)
                     t = theta1  # only use detector estimation
-                    t = t.reshape(1, 4, 2)
+                    t = t.reshape(1, 5, 2)
                     self.theta[-1] = t
                     # if first == 1:
                     #     self.klevels.append(0)
