@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from utils import Simulator
+from utils.simulator import Simulator
 from utils.controllers.LQR import LQR
-
+# import torch
 cf_ = 155494.663
 cr_ = 155494.663
 wheelbase_ = 2.852
@@ -36,7 +36,7 @@ B = np.zeros((4, 1), dtype=np.float32)
 B[1, 0] = cf_ / mass_
 B[3, 0] = lf_ * cf_ / iz_
 
-x_0 = np.array([-0.5, 0, 0, 0])
+x_0 = np.array([-0.1, 0, 0, 0])
 
 Q = np.eye(4)
 R = np.eye(1) * 10
@@ -53,6 +53,12 @@ class Controller:
         self.lqr.set_reference(ref)
         cin = self.lqr.update(feedback_value, current_time)
         return cin
+
+    # def update_torch(self, ref: np.ndarray, feedback_value: np.ndarray, current_time) -> torch.Tensor:
+    #     self.lqr.set_reference(ref)
+    #     cin = self.lqr.update_torch(feedback_value, current_time)
+    #     cin = torch.tensor(cin, dtype=torch.float32)  # transfer to PyTorch tensor
+    #     return cin
 
     def set_control_limit(self, control_lo, control_up):
         self.control_lo = control_lo
@@ -85,7 +91,7 @@ if __name__ == "__main__":
     noise = {
         'process': {
             'type': 'white',
-            'param': {'C': np.eye(4) * 0.001}
+            'param': {'C': np.eye(4) * 0.0001}
         }
     }
     lk = LaneKeeping('test', dt, max_index, noise)
