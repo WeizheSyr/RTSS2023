@@ -45,15 +45,15 @@ class ThreeDetector:
         self.pOrN = None
 
         # recovery-ability
-        self.pz = Zonotope.from_box(np.ones(7) * -0.003, np.ones(7) * 0.003)    # process noise
+        self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
         # self.uz = Zonotope.from_box(exp.control_lo, exp.control_up)             # setting in Baseline.py
-        self.uz = Zonotope.from_box(np.ones(4) * -1.5, np.ones(4) * 1.5)
+        self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)
         # self.targetz = Zonotope.from_box(np.ones(7) * 0, np.ones(7) * 1)        # target set in zonotope
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, -1, -1, -1, -1]), np.array([1, 1, 1, 1, 1, 1, 1]))
         # self.targetz = Zonotope.from_box(np.array([0, 0, 0, 0, 0, 0, 0]), np.array([1, 1, 1, 1, 1, 1, 1]))
-        self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
-        self.target_up = np.array([1.2, 1.2, 1.2, 1, 1, 1, 1])
-        self.klevel = 4                                                       # keep k level recover-ability
+        self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
+        self.target_up = np.array([1.2, 1.2, 1.2, 0.4, 0.4, 0.4, 0.4])
+        self.klevel = 3                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
         # self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)

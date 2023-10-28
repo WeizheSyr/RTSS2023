@@ -17,7 +17,7 @@ attack = np.zeros(50)
 attack_duration = 50
 # attack = np.zeros(attack_duration)
 for i in range(50):
-    attack[i] = 0.002
+    attack[i] = 0.003
 # for i in range(10):
 #     attack[i + 4] = 0.015 + 0.0006 * i
 print("attack", attack)

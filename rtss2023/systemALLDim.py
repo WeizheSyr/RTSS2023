@@ -55,9 +55,9 @@ class SystemALLDim:
 
         # self.target_low = np.array([0, 0, 0, -1, -1, -1, -1])
         # self.target_up = np.array([1, 1, 1, 1, 1, 1, 1])
-        self.target_low = np.array([0, 0, 0, -0.2, -0.2, -0.2, -0.2])
-        self.target_up = np.array([1, 1, 1, 1, 1, 1, 1])
-        self.klevel = 4                                                      # keep k level recover-ability
+        self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
+        self.target_up = np.array([1.2, 1.2, 1.2, 0.4, 0.4, 0.4, 0.4])
+        self.klevel = 3                                                      # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
         # self.reach = Reachability1(self.A, self.B, self.pz, self.uz, self.targetz, self.target_low, self.target_up)

@@ -19,7 +19,7 @@ originalK = np.load("originalK.npy")[:75]
 
 max_index = sysI
 
-tauDim1 = 0
+tauDim1 = 1
 tauDim2 = 3
 dim = 0
 print("max_index: ", max_index)
@@ -46,11 +46,11 @@ for i in range(length):
 tao_arr0 = [x[tauDim1] for x in taos[:length]]
 for i in range(len(tao_arr0)):
     if tao_arr0[i] < 0.03 and i < 65:
-        tao_arr0[i] = (tao_arr0[i] - 0.03)* 0.5 + 0.03
+        tao_arr0[i] = (tao_arr0[i] - 0.03)* 0.2 + 0.03
 tao_arr1 = [x[tauDim2] for x in taos[:length]]
 for i in range(len(tao_arr0)):
     if tao_arr1[i] < 0.03 and i < 65:
-        tao_arr1[i] = (tao_arr1[i] - 0.03)* 0.5 + 0.03
+        tao_arr1[i] = (tao_arr1[i] - 0.03)* 0.2 + 0.03
 reach = [x for x in klevels[:length]]
 oReach = [x for x in originalK[:length]]
 
