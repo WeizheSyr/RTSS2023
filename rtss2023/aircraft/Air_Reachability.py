@@ -399,47 +399,6 @@ class Reachability:
                 else:
                     objStep = start - 1
             deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-
-        # if inOrDe == 0:
-        #     # increase k
-        #     exist = 0
-        #     if start == 0 and end == 0 and self.reach[0] == 1:
-        #         objStep = 1
-        #         exist = 1
-        #         deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-        #     if start == 0 and end != 0 and exist == 0:
-        #         objStep = end + 1
-        #         exist = 1
-        #         deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-        #     if start != 0 and exist == 0:
-        #         if end != self.max_step -1 and self.emptySet[end + 1] != 1:
-        #             objStep = end + 1
-        #         else:
-        #             objStep = start - 1
-        #         deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-        #     elif start != 0 and exist == 0:
-        #         objStep = 0
-        #         for i in range(self.max_step):
-        #             # Probable intersection
-        #             if np.any(self.inOrOuts[i]):
-        #                 objStep = i
-        #                 exist = 1
-        #                 # break
-        #         if exist == 0:
-        #             for i in range(self.max_step):
-        #                 if np.any(self.adjustDirs[i]) and self.emptySet[i] == 0:
-        #                     objStep = i
-        #             if objStep == 0:
-        #                 for i in range(self.max_step):
-        #                     if i <= objStep:
-        #                         continue
-        #                     # empty set
-        #                     if np.any(self.adjustDirs[i]) and self.emptySet[i] == 1:
-        #                         objStep = i
-        #                         break
-        #
-        #         deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-            # print("objstep", objStep)
         else:
             # decrease k
             objStep = start + 1

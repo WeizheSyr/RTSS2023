@@ -130,7 +130,7 @@ class ThreeDetector:
                 if self.alertat == 0:
                     self.alertat = exp.model.cur_index
                 # return
-            if self.i >= 80:
+            if self.i >= 75:
                 return
 
             # fixed window-based detector
@@ -162,7 +162,7 @@ class ThreeDetector:
             self.authQueueFeed.insert(0, exp.model.feedbacks[exp.model.cur_index - 1])
 
             self.authTimestep += 1
-            if self.authTimestep == self.auth.timestep:
+            if self.authTimestep == self.auth.timestep and self.alertat == 0 :
                 justAuth = 0
                 self.authTimestep = 0
                 authQueueInput1 = self.authQueueInput[::-1]
@@ -299,6 +299,9 @@ class ThreeDetector:
                             inOrDe = 1
                         delta_tau = self.reach.adjustTauNew(self.pOrN, start_step, end_step, inOrDe, self.detector)
                         # delta_tau = self.reach.adjustTau(self.pOrN, start_step, end_step)
+                        if not np.any(delta_tau):
+                            print("not any delta_tau")
+                            exit()
                         print("delta tao", delta_tau)
                         self.detector.adjust(delta_tau, inOrDe)
                         self.taos[-1] = deepcopy(self.detector.tao)

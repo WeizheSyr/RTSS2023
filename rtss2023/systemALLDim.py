@@ -106,10 +106,9 @@ class SystemALLDim:
             self.taos.append(temp)
             if alarm:
                 print("alarm at", exp.model.cur_index)
-                # self.detector.continueWork()
                 return
             # if self.i >= 200:
-            if self.i >= 50:
+            if self.i >= 80:
                 return
 
             # authentication

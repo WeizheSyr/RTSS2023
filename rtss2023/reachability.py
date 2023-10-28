@@ -38,6 +38,7 @@ class Reachability:
         # result of checking intersection
         self.intersection = np.zeros(self.max_step)
         self.delta_theta = np.zeros(A.shape[0])
+        self.reach = None
 
         # adjust Tau
         self.adjustDirs = None
@@ -144,6 +145,7 @@ class Reachability:
             scopes.append(scope)
             iterations.append(iteration)
             intersectCases.append(intersectCase)
+        self.reach = ks
         print("ks", ks)
         self.adjustDirs = adjustDirs
         self.inOrOuts = inOrOuts
@@ -446,6 +448,7 @@ class Reachability:
         return deltaTau
 
     def adjustTauNew(self, pOrN, start, end, inOrDe, detector):
+        print("start:", start, "end", end)
         self.detector = detector
         self.numAdjust += 1
         startTime = time.time()
@@ -484,68 +487,139 @@ class Reachability:
         self.deltaEs = deltaEs
 
         if inOrDe == 0:
-            # if start == 0:
-            #     deltaTau = np.zeros(self.A.shape[0])
-            #     a = np.argmax(self.detector.tao)
-            #     if self.detector.tao[a] > self.detector.iniTao[a]:
-            #         # force decrease tau
-            #         # deltaTau[a] = (self.detector.tao[a] - self.detector.iniTao[a]) * 0.5
-            #         deltaTau[a] = (self.detector.tao[a] - 0.025) * 0.2
-            #         print("force decrease tau")
-            #         # print("tao", self.detector.tao)
-            #         return deltaTau
-            # increase k
-            if start != 0:
-                if end != self.max_step -1 and self.emptySet[end + 1] != 1:
-                    objStep = end + 1
-                else:
-                    objStep = start - 1
-                # deltaTau = self.getDeltaTauIncreaseK(objStep)
-                # deltaTau = self.getDeltaTauIncreaseDir(objStep)
-                deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-                # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
-            else:
-                objStep = 0
-                # objStep = self.max_step - 1
-                exist = 0
+            exist = 0
+            if start == 0 and end == 0 and self.reach[0] == 0:
                 for i in range(self.max_step):
                     # Probable intersection
                     if np.any(self.inOrOuts[i]):
                         objStep = i
                         exist = 1
-                        # break
                 if exist == 0:
                     for i in range(self.max_step):
                         if np.any(self.adjustDirs[i]) and self.emptySet[i] == 0:
                             objStep = i
-                    if objStep == 0:
+                            exist = 1
+                            break
+                    if exist == 0:
                         for i in range(self.max_step):
-                            if i <= objStep:
-                                continue
-                            # empty set
                             if np.any(self.adjustDirs[i]) and self.emptySet[i] == 1:
                                 objStep = i
+                                exist = 1
                                 break
-
-                # deltaTau = self.getDeltaTau(objStep)
-                # deltaTau = self.getDeltaTauIncreaseK(objStep)
-                # deltaTau = self.getDeltaTauIncreaseDir(objStep)
+            if start == 0 and end == 0 and self.reach[0] == 1 and exist == 0:
+                objStep = 1
+                exist = 1
                 deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-                # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
-            # print("objstep", objStep)
+            if start == 0 and end != 0 and exist == 0:
+                objStep = end + 1
+                exist = 1
+                deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
+            if start != 0 and exist == 0:
+                if end != self.max_step - 1:
+                    objStep = end + 1
+                else:
+                    objStep = start - 1
+            deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
         else:
             # decrease k
             objStep = start + 1
-            # objStep = end - 7
-            # deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
-            # deltaTau = self.getDeltaTauDecreaseKNew(objStep)
-            # deltaTau = self.getDeltaTauDecreaseK(objStep)
             deltaTau = self.getDeltaTauDecreaseKDirNew(objStep)
 
         endTime = time.time()
         self.timeAdjust += endTime - startTime
-        # print("avg adjust time: ", self.timeAdjust / self.numAdjust)
         return deltaTau
+
+    # def adjustTauNew(self, pOrN, start, end, inOrDe, detector):
+    #     self.detector = detector
+    #     self.numAdjust += 1
+    #     startTime = time.time()
+    #     # box's center movements
+    #     deltaCs = []
+    #     # box's edge movements
+    #     deltaEs = []
+    #     # corresponding steps
+    #     for d in range(self.max_step):
+    #         deltaC = []
+    #         deltaE = []
+    #         # corresponding support vectors
+    #         for j in range(self.A.shape[0]):
+    #             t = np.zeros(self.A.shape)
+    #             for i in range(len(pOrN)):
+    #                 t += self.A_i[i] * pOrN[-i]
+    #             t = 0.5 * self.A_i[d] @ t
+    #             t = t.T @ self.l[j]
+    #             deltaC.append(t.T)
+    #
+    #             # select one column in 1/2 A_i
+    #             b = (0.5 * self.A_i[d].T)[:, j]
+    #             # corresponding generators
+    #             for i in range(self.A.shape[0]):
+    #                 b[i] = b[i] * self.sNorm[d][j][i]
+    #             sum_A_i = np.zeros(self.A.shape)
+    #             for i in range(len(pOrN)):
+    #                 sum_A_i += self.A_i[i]
+    #             # select one row in sum_A_i
+    #             a = sum_A_i[j]
+    #             deltaE.append(np.sum(b) * a)
+    #         deltaCs.append(deltaC)
+    #         deltaEs.append(deltaE)
+    #
+    #     self.deltaCs = deltaCs
+    #     self.deltaEs = deltaEs
+    #
+    #     if inOrDe == 0:
+    #         # increase k
+    #         if start != 0:
+    #             if end != self.max_step -1 and self.emptySet[end + 1] != 1:
+    #                 objStep = end + 1
+    #             else:
+    #                 objStep = start - 1
+    #             # deltaTau = self.getDeltaTauIncreaseK(objStep)
+    #             # deltaTau = self.getDeltaTauIncreaseDir(objStep)
+    #             deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
+    #             # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
+    #         else:
+    #             objStep = 0
+    #             # objStep = self.max_step - 1
+    #             exist = 0
+    #             for i in range(self.max_step):
+    #                 # Probable intersection
+    #                 if np.any(self.inOrOuts[i]):
+    #                     objStep = i
+    #                     exist = 1
+    #                     # break
+    #             if exist == 0:
+    #                 for i in range(self.max_step):
+    #                     if np.any(self.adjustDirs[i]) and self.emptySet[i] == 0:
+    #                         objStep = i
+    #                 if objStep == 0:
+    #                     for i in range(self.max_step):
+    #                         if i <= objStep:
+    #                             continue
+    #                         # empty set
+    #                         if np.any(self.adjustDirs[i]) and self.emptySet[i] == 1:
+    #                             objStep = i
+    #                             break
+    #
+    #             # deltaTau = self.getDeltaTau(objStep)
+    #             # deltaTau = self.getDeltaTauIncreaseK(objStep)
+    #             # deltaTau = self.getDeltaTauIncreaseDir(objStep)
+    #             deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
+    #             # deltaTau = self.getDeltaTauIncreaseKNew(objStep)
+    #         # print("objstep", objStep)
+    #     else:
+    #         # decrease k
+    #         objStep = start + 1
+    #         # objStep = end - 7
+    #         # deltaTau = self.getDeltaTauDecreaseKAllDim(objStep)
+    #         # deltaTau = self.getDeltaTauDecreaseKNew(objStep)
+    #         # deltaTau = self.getDeltaTauDecreaseK(objStep)
+    #         deltaTau = self.getDeltaTauDecreaseKDirNew(objStep)
+    #
+    #     endTime = time.time()
+    #     self.timeAdjust += endTime - startTime
+    #     # print("avg adjust time: ", self.timeAdjust / self.numAdjust)
+    #     return deltaTau
 
 
     def getSNorm(self, D: Zonotope):

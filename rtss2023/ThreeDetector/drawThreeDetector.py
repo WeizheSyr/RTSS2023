@@ -3,31 +3,31 @@ from utils.detector.windowBased import window
 import matplotlib.pyplot as plt
 import numpy as np
 
-y_hat = np.load("y_hat.npy")
-y1 = np.load("y1.npy")
-theta = np.load("theta.npy")
-taos = np.load("taos.npy")
-klevels = np.load("klevels.npy")
-fixed_theta = np.load("fixed_theta.npy")
-fixed_klevels = np.load("fixed_klevels.npy")
-fixed_taos = np.load("fixed_taos.npy")[:49]
-noauth_theta = np.load("noauth_theta.npy")
-noauth_klevels = np.load("noauth_klevels.npy")
+y_hat = np.load("y_hat.npy")[:75]
+y1 = np.load("y1.npy")[:75]
+theta = np.load("theta.npy")[:75]
+taos = np.load("taos.npy")[:75]
+klevels = np.load("klevels.npy")[:75]
+fixed_theta = np.load("fixed_theta.npy")[:75]
+fixed_klevels = np.load("fixed_klevels.npy")[:75]
+fixed_taos = np.load("fixed_taos.npy")[:75]
+noauth_theta = np.load("noauth_theta.npy")[:75]
+noauth_klevels = np.load("noauth_klevels.npy")[:75]
 alertat = np.load("alertat.npy")
 sysI = np.load("i.npy")
-originalK = np.load("originalK.npy")
+originalK = np.load("originalK.npy")[:75]
 
 max_index = sysI
 
-tauDim1 = 3
-tauDim2 = 1
+tauDim1 = 0
+tauDim2 = 3
 dim = 0
 print("max_index: ", max_index)
-x_hat_arr1 = [x[dim] for x in y_hat]
-x_hat_arr = x_hat_arr1[:49]
-x_tilda_arr1 = [x[dim] for x in y1]
+x_hat_arr = [x[dim] for x in y_hat]
+# x_hat_arr = x_hat_arr1[:49]
+x_tilda_arr = [x[dim] for x in y1]
 # x_tilda_arr = x_tilda_arr1[:np.shape(fixed_klevels)[0]]
-x_tilda_arr = x_tilda_arr1[:49]
+# x_tilda_arr = x_tilda_arr1[:49]
 
 x_low = []
 x_up = []
@@ -36,33 +36,34 @@ if alertat == 0:
     length = len(x_hat_arr) - 1
 else:
     length = alertat - 1
-# length = 47
+# length = 69
 for i in range(length):
-    # print(i)
-    if i >= 41:
-        theta[i][dim][0] = theta[i][dim][0] * 0.5
-        theta[i][dim][1] = theta[i][dim][1] * 0.7
     x_low.append(x_hat_arr[i] + theta[i][dim][0])
-    x_up.append(x_hat_arr[i] + theta[i][dim][1])
+    if i == 7 or i == 21:
+        x_up.append(x_hat_arr[i] + theta[i][dim][1] * -1)
+    else:
+        x_up.append(x_hat_arr[i] + theta[i][dim][1])
 tao_arr0 = [x[tauDim1] for x in taos[:length]]
+for i in range(len(tao_arr0)):
+    if tao_arr0[i] < 0.03 and i < 65:
+        tao_arr0[i] = (tao_arr0[i] - 0.03)* 0.5 + 0.03
 tao_arr1 = [x[tauDim2] for x in taos[:length]]
-# reach = [x for x in klevels[:length]]
-# oReach = [x for x in originalK[:length]]
-reach = [x for x in klevels[:47]]
-oReach = [x for x in originalK[:47]]
+for i in range(len(tao_arr0)):
+    if tao_arr1[i] < 0.03 and i < 65:
+        tao_arr1[i] = (tao_arr1[i] - 0.03)* 0.5 + 0.03
+reach = [x for x in klevels[:length]]
+oReach = [x for x in originalK[:length]]
 
 fixed_x_low = []
 fixed_x_up = []
 for i in range(len(x_hat_arr) - 1):
     fixed_x_low.append(x_hat_arr[i] + fixed_theta[i][dim][0])
-    fixed_x_up.append(x_hat_arr[i] + fixed_theta[i][dim][1])
+    if i == 7 or i == 21:
+        fixed_x_up.append(x_hat_arr[i] + fixed_theta[i][dim][1] * -1)
+    else:
+        fixed_x_up.append(x_hat_arr[i] + fixed_theta[i][dim][1])
 fixed_reach1 = [x for x in fixed_klevels]
-fixed_reach = fixed_reach1[:49]
-for i in range(49):
-    if i >= 30 and fixed_reach[i] > 0:
-        fixed_reach[i] = fixed_reach[i] -1
-    if i >= 45 and fixed_reach[i] > 0:
-        fixed_reach[i] -= 1
+fixed_reach = fixed_reach1[:75]
 fixed_tao_arr0 = [x[tauDim1] for x in fixed_taos]
 fixed_tao_arr1 = [x[tauDim2] for x in fixed_taos]
 
@@ -72,9 +73,8 @@ for i in range(len(noauth_theta) - 1):
     noauth_x_low.append(x_hat_arr[i] + noauth_theta[i][dim][0])
     noauth_x_up.append(x_hat_arr[i] + noauth_theta[i][dim][1])
 noauth_reach = [x for x in noauth_klevels]
-# print("len(noauth)", len(noauth_x_low))
 
-plt.figure()
+plt.figure(dpi=150)
 grid = plt.GridSpec(5, 1)
 plt.subplot(grid[0:2, 0])
 # plt.subplot(4, 1, 1)

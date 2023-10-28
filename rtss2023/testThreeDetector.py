@@ -13,13 +13,13 @@ fixed_tao = np.ones(7) * 0.03
 fixed_detector = window(fixed_tao, 7, 10)
 noauth_detector = window(fixed_tao, 7, 10)
 exp = Platoon
-attack = np.zeros(20)
+attack = np.zeros(50)
 attack_duration = 50
 # attack = np.zeros(attack_duration)
-for i in range(5):
-    attack[i] = 0.003 * i
-for i in range(10):
-    attack[i + 4] = 0.015 + 0.0006 * i
+for i in range(50):
+    attack[i] = 0.002
+# for i in range(10):
+#     attack[i + 4] = 0.015 + 0.0006 * i
 print("attack", attack)
 
 sys = ThreeDetector(detector=detector, fixed_detector=fixed_detector, noauth_detector=noauth_detector, exp=exp, attack=attack, attack_duration=attack_duration)

@@ -5,7 +5,7 @@ from simulators.linear.platoon import Platoon
 
 
 class Authenticate:
-    def __init__(self, exp, n, p=0.002, v=0.002, inf=0.5):
+    def __init__(self, exp, n, p=0.002, v=0.003, inf=0.5):
         self.u = None
         self.y = None
         self.INF = inf

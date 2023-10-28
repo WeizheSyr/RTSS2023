@@ -80,8 +80,8 @@ class Platoon:
     noise = {
         'process': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.001,
-                      'up': np.ones(7) * 0.001}
+            'param': {'lo': np.ones(7) * -0.002,
+                      'up': np.ones(7) * 0.002}
         },
         'measurement': {
             'type': 'box_uniform',
@@ -92,4 +92,4 @@ class Platoon:
     model = Platoon('test', dt, max_index, noise)
     # attack_start_index = 400        # for time-consuming
     # attack_start_index = 55     # for three detector
-    attack_start_index = 75
+    attack_start_index = 65
