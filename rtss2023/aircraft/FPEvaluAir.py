@@ -1,7 +1,6 @@
 import numpy as np
-from Authenticate import Authenticate
-# from reachability1 import Reachability1
-from reachability import Reachability
+from Air_Authenticate import Authenticate
+from Air_Reachability import Reachability
 from utils.formal.zonotope import Zonotope
 from copy import deepcopy
 
@@ -25,14 +24,14 @@ class FPEvaluation1:
         self.y1 = []
 
         # authentication
-        self.auth = Authenticate(exp.model, 4)    # 4 for platoon
+        self.auth = Authenticate(exp.model, 1)    # 4 for airpitch
         self.authQueueInput = []            # authentication input queue
         self.authQueueFeed = []             # authentication feedback queue
         self.authTimestep = 0               # timestep 14 for platoon
         self.authT = []                     # authentication timestep in system
 
         # real state calculate
-        self.theta = np.zeros([1, 7, 2])  # timestep, dimension, low or up
+        self.theta = np.zeros([1, 3, 2])  # timestep, dimension, low or up
         self.est1 = []
         self.est2 = []
 
@@ -44,13 +43,14 @@ class FPEvaluation1:
         self.pOrN = None
 
         # recovery-ability
-        self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
-        self.uz = Zonotope.from_box(np.ones(4) * -6, np.ones(4) * 6)
-        self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
-        self.target_up = np.array([1.2, 1.2, 1.2, 0.4, 0.4, 0.4, 0.4])
-        self.klevel = 5                                                       # keep k level recover-ability
+        self.pz = Zonotope.from_box(np.ones(3) * 0.0001, np.ones(3) * 0.0001)    # process noise
+        self.uz = Zonotope.from_box(np.array([-20]), np.array([20]))
+        # self.target_low = np.array([0, -0.005, 0.15])
+        # self.target_up = np.array([0.1, 0.005, 0.17])
+        self.target_low = np.array([0, -0.005, 0.15])
+        self.target_up = np.array([0.1, 0.005, 0.17])
+        self.klevel = 3                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
-        # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
 
         self.taos = []
@@ -63,7 +63,7 @@ class FPEvaluation1:
         self.fixed_residuals = []
         self.fixed_detectResults = []
         self.fixed_alarm_list = []
-        self.fixed_theta = np.zeros([1, 7, 2])  # timestep, dimension, low or up
+        self.fixed_theta = np.zeros([1, 3, 2])  # timestep, dimension, low or up
 
         # fixed detector's reachability
         self.fixed_reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
@@ -79,11 +79,11 @@ class FPEvaluation1:
             self.i += 1
             self.index_list.append(exp.model.cur_index)
             self.reference_list.append(exp.ref[self.i])
-            self.real_cur_y = exp.model.cur_y
-            self.y.append(exp.model.cur_y)
-            self.y_tilda.append(exp.model.cur_y)
+            self.real_cur_y = exp.model.cur_x
+            self.y.append(exp.model.cur_x)
+            self.y_tilda.append(exp.model.cur_x)
             self.y_hat.append(exp.model.predict)
-            y1 = deepcopy(exp.model.cur_y)
+            y1 = deepcopy(exp.model.cur_x)
             self.y1.append(y1)
 
             # window-based detector
@@ -127,7 +127,7 @@ class FPEvaluation1:
                 self.authQueueInput.pop()
                 self.authQueueFeed.pop()
             self.authQueueInput.insert(0, exp.model.inputs[exp.model.cur_index - 1])
-            self.authQueueFeed.insert(0, exp.model.feedbacks[exp.model.cur_index - 1])
+            self.authQueueFeed.insert(0, exp.model.states[exp.model.cur_index - 1])
 
             self.authTimestep += 1
             if self.authTimestep == self.auth.timestep:
@@ -149,23 +149,23 @@ class FPEvaluation1:
                     # fixed detector
                     self.fixed_theta[0] = t
                 else:
-                    t = t.reshape(1, 7, 2)
-                    self.theta[self.i - 7] = t
+                    t = t.reshape(1, 3, 2)
+                    self.theta[self.i - 3] = t
 
                     # fixed detector
-                    self.fixed_theta[self.i - 7] = t
+                    self.fixed_theta[self.i - 3] = t
 
                 # update real state calculate
-                for k in range(5):
+                for k in range(1):
                     # bound from detector
-                    theta1 = self.boundByDetector(self.i - 7 + k + 1)
-                    t = theta1.reshape(1, 7, 2)
+                    theta1 = self.boundByDetector(self.i - 3 + k + 1)
+                    t = theta1.reshape(1, 3, 2)
                     # fixed detector
-                    fixed_theta1 = self.boundByDetector1(self.i - 7 + k + 1, self.fixed_detector)
-                    fixed_t = fixed_theta1.reshape(1, 7, 2)
+                    fixed_theta1 = self.boundByDetector1(self.i - 3 + k + 1, self.fixed_detector)
+                    fixed_t = fixed_theta1.reshape(1, 3, 2)
 
                     # first time authentication
-                    if len(self.theta) <= 7:
+                    if len(self.theta) <= 3:
                         self.theta = np.append(self.theta, t, axis=0)
                         # fixed detector
                         self.fixed_theta = np.append(self.fixed_theta, fixed_t, axis=0)
@@ -175,10 +175,10 @@ class FPEvaluation1:
                         self.fixed_klevels.append(0)
                     # Rewrite previous theta
                     else:
-                        self.theta[self.i - 7 + k + 1] = t
+                        self.theta[self.i - 3 + k + 1] = t
                         # print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
                         # fixed detector
-                        self.fixed_theta[self.i - 7 + k + 1] = fixed_t
+                        self.fixed_theta[self.i - 3 + k + 1] = fixed_t
 
             else:
                 justAuth = justAuth + 1
@@ -187,7 +187,7 @@ class FPEvaluation1:
                 # bound from detector
                 theta1 = self.boundByDetector(self.i - 1)
                 t = theta1                                      # only use detector estimation
-                t = t.reshape(1, 7, 2)
+                t = t.reshape(1, 3, 2)
                 self.theta = np.append(self.theta, t, axis=0)
                 if first == 1:
                     self.klevels.append(0)
@@ -195,7 +195,7 @@ class FPEvaluation1:
                 # fixed detector
                 fixed_theta1 = self.boundByDetector1(self.i - 1, self.fixed_detector)
                 fixed_t = fixed_theta1
-                fixed_t = fixed_t.reshape(1, 7, 2)
+                fixed_t = fixed_t.reshape(1, 3, 2)
                 self.fixed_theta = np.append(self.fixed_theta, fixed_t, axis=0)
                 if first == 1:
                     self.fixed_klevels.append(0)
@@ -209,11 +209,12 @@ class FPEvaluation1:
 
                 # fixed detector
                 if self.fixedAlert == 0:
+                    x_hatz = self.y_hat[-1]
                     fixed_thetaz = Zonotope.from_box(self.fixed_theta[-1, :, 0], self.fixed_theta[-1, :, 1])
                     fixed_kresult, fixed_start_step, fixed_end_step = self.fixed_reach.k_level(x_hatz, fixed_thetaz)
                     self.fixed_klevels.append(fixed_kresult)
 
-                while(False):
+                while(True):
                     if self.alertat != 0:
                         break
                     if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
@@ -243,16 +244,16 @@ class FPEvaluation1:
                             del exp
                             return
 
-                    for k in range(5 + justAuth):
+                    for k in range(1 + justAuth):
                         # bound from detector
-                        theta1 = self.boundByDetector(self.i - 7 - justAuth + k + 1)
-                        t = theta1.reshape(1, 7, 2)  # only use detector estimation
-                        self.theta[self.i - 7 - justAuth + k + 1] = t
+                        theta1 = self.boundByDetector(self.i - 3 - justAuth + k + 1)
+                        t = theta1.reshape(1, 3, 2)  # only use detector estimation
+                        self.theta[self.i - 3 - justAuth + k + 1] = t
 
                     # bound from detector
                     theta1 = self.boundByDetector(self.i - 1)
                     t = theta1  # only use detector estimation
-                    t = t.reshape(1, 7, 2)
+                    t = t.reshape(1, 3, 2)
                     self.theta[-1] = t
 
                     x_hatz = self.y_hat[-1]
@@ -312,16 +313,16 @@ class FPEvaluation1:
                     A_theta_up += self.A[i][j] * self.theta[t - 1, j, 0]
             if pOrN[i] > 0:
                 theta1[i][0] = \
-                (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002 + self.y_tilda[t])[
+                (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.0001 + self.y_tilda[t])[
                     i] + A_theta_lo
-                theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + 0.002)[
+                theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + 0.0001)[
                                    i] + A_theta_up
             else:
                 theta1[i][0] = \
-                (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002)[
+                (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.0001)[
                     i] + A_theta_lo
                 theta1[i][1] = \
-                (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + 0.002 + self.y_tilda[t])[
+                (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + 0.0001 + self.y_tilda[t])[
                     i] + A_theta_up
         return theta1
 
@@ -348,16 +349,16 @@ class FPEvaluation1:
             A_theta_lo = 0
             A_theta_up = 0
             for j in range(self.A.shape[0]):
-                if self.A[i][j] >=0:
+                if self.A[i][j] >= 0:
                     A_theta_lo += self.A[i][j] * self.fixed_theta[t - 1, j, 0]
                     A_theta_up += self.A[i][j] * self.fixed_theta[t - 1, j, 1]
                 else:
                     A_theta_lo += self.A[i][j] * self.fixed_theta[t - 1, j, 1]
                     A_theta_up += self.A[i][j] * self.fixed_theta[t - 1, j, 0]
             if pOrN[i] > 0:
-                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002 + self.y_tilda[t])[i] + A_theta_lo
-                theta1[i][1] = (detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + 0.002)[i] + A_theta_up
+                theta1[i][0] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.0001 + self.y_tilda[t])[i] + A_theta_lo
+                theta1[i][1] = (detector.tao - rsum + self.A @ (self.y_hat[t - 1] - self.y_tilda[t - 1]) + 0.0001)[i] + A_theta_up
             else:
-                theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002)[i] + A_theta_lo
-                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + 0.002 + self.y_tilda[t])[i] + A_theta_up
+                theta1[i][0] = (-detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.0001)[i] + A_theta_lo
+                theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + 0.0001 + self.y_tilda[t])[i] + A_theta_up
         return theta1

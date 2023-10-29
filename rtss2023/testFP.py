@@ -34,7 +34,7 @@ for i in range(30):
     print("iteration num: ", i)
     tao = np.ones(7) * 0.03
     detector = window(tao, 7, 10)
-    fixed_tao = np.ones(7) * 0.015
+    fixed_tao = np.ones(7) * 0.03
     fixed_detector = window(fixed_tao, 7, 10)
     exp = Platoon
     attack = np.zeros(50)
