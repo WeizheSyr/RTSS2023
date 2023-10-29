@@ -5,7 +5,7 @@ from simulators.linear.platoon import Platoon
 
 
 class Authenticate:
-    def __init__(self, exp, n, p=0.002, v=0.003, inf=0.5):
+    def __init__(self, exp, n, p=0.002, inf=0.5):
         self.u = None
         self.y = None
         self.INF = inf
@@ -21,11 +21,11 @@ class Authenticate:
 
         self.A = exp.sysd.A
         self.B = exp.sysd.B
-        self.delta = self.getDelta(p, v)
+        self.delta = self.getDelta(p)
         self.A_k = self.getA_k()
         self.U = None
 
-    def getDelta(self, p, v):
+    def getDelta(self, p):
         d = np.zeros([self.timestep, self.m])
         for i in range(self.timestep):
             if i == 0:

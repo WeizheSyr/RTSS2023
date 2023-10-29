@@ -3,23 +3,9 @@ from EvaluationFixedDetector import SystemFixedDetector
 from ThreeDetector import ThreeDetector
 from utils.Baseline import Platoon
 from utils.detector.windowBased import window
-from FPEvaluation import FPEvaluation
-import matplotlib.pyplot as plt
+from FPEvaluation1 import FPEvaluation1
 import numpy as np
-import time
 
-# tao = np.ones(7) * 0.1
-# tao = [0.5] * 7
-# detector = window(tao, 7, 10)
-# fixed_tao = np.ones(7) * 0.1
-# fixed_detector = window(fixed_tao, 7, 10)
-# noauth_detector = window(fixed_tao, 7, 10)
-# exp = Platoon
-# attack = np.zeros(50)
-# attack_duration = 50
-# attack = np.zeros(attack_duration)
-
-# sys = ThreeDetector(detector=detector, fixed_detector=fixed_detector, noauth_detector=noauth_detector, exp=exp, attack=attack, attack_duration=attack_duration)
 
 FP_our = 0
 FP_fixed = 0
@@ -40,7 +26,7 @@ for i in range(30):
     attack = np.zeros(50)
     attack_duration = 500
 
-    sys = FPEvaluation(detector=detector, fixed_detector=fixed_detector, exp=exp, attack=attack, attack_duration=attack_duration)
+    sys = FPEvaluation1(detector=detector, fixed_detector=fixed_detector, exp=exp, attack=attack, attack_duration=attack_duration)
     print(sys.i)
     totalLength = totalLength + len(sys.fixed_klevels)
     ourLength = ourLength + len(sys.klevels)

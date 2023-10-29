@@ -18,6 +18,8 @@ A = np.array([[0, 0, 0, -1, 1, 0, 0],
 
 B = np.concatenate((np.zeros((4, 3)), np.eye(4)), axis=1).T
 
+print(A)
+print(B)
 x_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 # control parameters

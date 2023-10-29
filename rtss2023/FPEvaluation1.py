@@ -9,7 +9,7 @@ from copy import deepcopy
 np.set_printoptions(suppress=True)
 
 
-class FPEvaluation:
+class FPEvaluation1:
     # @with_goto
     def __init__(self, detector, fixed_detector, exp, attack=None, attack_duration=50):
         self.i = 0
@@ -49,7 +49,7 @@ class FPEvaluation:
         self.uz = Zonotope.from_box(np.ones(4) * -4, np.ones(4) * 4)
         self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
         self.target_up = np.array([1.2, 1.2, 1.2, 0.4, 0.4, 0.4, 0.4])
-        self.klevel = 3                                                       # keep k level recover-ability
+        self.klevel = 4                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         # self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.targetz)
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
@@ -214,7 +214,7 @@ class FPEvaluation:
                     fixed_kresult, fixed_start_step, fixed_end_step = self.fixed_reach.k_level(x_hatz, fixed_thetaz)
                     self.fixed_klevels.append(fixed_kresult)
 
-                while(False):
+                while(True):
                     if self.alertat != 0:
                         break
                     if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:

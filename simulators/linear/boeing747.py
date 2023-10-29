@@ -20,6 +20,9 @@ C = np.array([[1, 0, 0, 0, 0]])
 x_0 = np.array([14.93992144, -3.41178082, 0.03680157, 13.78503916, 12.40544757])
 
 
+print(A)
+print(B)
+
 # control parameters
 R = np.array([[10]])
 Q = np.eye(5)
