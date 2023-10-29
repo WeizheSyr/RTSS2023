@@ -49,7 +49,7 @@ class FPEvaluation1:
         # self.target_up = np.array([0.1, 0.005, 0.17])
         self.target_low = np.array([0, -0.005, 0.15])
         self.target_up = np.array([0.1, 0.005, 0.17])
-        self.klevel =5                                                       # keep k level recover-ability
+        self.klevel = 5                                                       # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
 

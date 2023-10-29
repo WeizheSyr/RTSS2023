@@ -1,6 +1,6 @@
-from utils.Baseline import AircraftPitch
+from utils.Baseline import Boeing
 from utils.detector.windowBased import window
-from FPEvaluAir import FPEvaluation1
+from FPEvaluBoe1 import FPEvaluation1
 import numpy as np
 
 
@@ -10,16 +10,16 @@ largerThanK = 0
 totalLength = 0
 ourLength = 0
 
-for i in range(40):
+for i in range(30):
     # rseed = np.uint32(int(time.time()))
     # print(rseed)
     # np.random.seed(rseed)
     print("iteration num: ", i)
-    tao = np.ones(3) * 0.001
-    detector = window(tao, 3, 10)
-    fixed_tao = np.ones(3) * 0.0007
-    fixed_detector = window(fixed_tao, 3, 10)
-    exp = AircraftPitch
+    tao = np.ones(5) * 0.1
+    detector = window(tao, 5, 10)
+    fixed_tao = np.ones(5) * 0.07
+    fixed_detector = window(fixed_tao, 5, 10)
+    exp = Boeing
     attack = np.zeros(50)
     attack_duration = 500
 

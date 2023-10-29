@@ -1,6 +1,6 @@
 from utils.Baseline import AircraftPitch
 from utils.detector.windowBased import window
-from FPEvaluAir import FPEvaluation1
+from FPEvaluAir1 import FPEvaluation1
 import numpy as np
 
 
@@ -17,7 +17,7 @@ for i in range(40):
     print("iteration num: ", i)
     tao = np.ones(3) * 0.001
     detector = window(tao, 3, 10)
-    fixed_tao = np.ones(3) * 0.0007
+    fixed_tao = np.ones(3) * 0.001
     fixed_detector = window(fixed_tao, 3, 10)
     exp = AircraftPitch
     attack = np.zeros(50)

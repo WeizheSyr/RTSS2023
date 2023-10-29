@@ -48,8 +48,8 @@ class Boeing:
     noise = {
         'process': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(5) * -0.001,
-                      'up': np.ones(5) * 0.001}
+            'param': {'lo': np.ones(5) * -0.01,
+                      'up': np.ones(5) * 0.01}
         }
     }
     model = Boeing('test', dt, max_index, noise)
