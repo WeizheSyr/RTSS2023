@@ -46,7 +46,7 @@ class FPEvaluation:
 
         # recovery-ability
         self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # process noise
-        self.uz = Zonotope.from_box(np.ones(4) * -6, np.ones(4) * 6)
+        self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)
         self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
         self.target_up = np.array([1.2, 1.2, 1.2, 0.4, 0.4, 0.4, 0.4])
         self.klevel = 5                                                      # keep k level recover-ability
@@ -214,7 +214,7 @@ class FPEvaluation:
                     fixed_kresult, fixed_start_step, fixed_end_step = self.fixed_reach.k_level(x_hatz, fixed_thetaz)
                     self.fixed_klevels.append(fixed_kresult)
 
-                while(True):
+                while(False):
                     if self.alertat != 0:
                         break
                     if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:

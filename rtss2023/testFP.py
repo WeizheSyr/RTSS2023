@@ -27,14 +27,14 @@ largerThanK = 0
 totalLength = 0
 ourLength = 0
 
-for i in range(30):
+for i in range(20):
     # rseed = np.uint32(int(time.time()))
     # print(rseed)
     # np.random.seed(rseed)
     print("iteration num: ", i)
     tao = np.ones(7) * 0.03
     detector = window(tao, 7, 10)
-    fixed_tao = np.ones(7) * 0.03
+    fixed_tao = np.ones(7) * 0.015
     fixed_detector = window(fixed_tao, 7, 10)
     exp = Platoon
     attack = np.zeros(50)
