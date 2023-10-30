@@ -173,54 +173,103 @@ class SystemALLDim:
                 self.originalK.append(kresult)
                 print('recovery-ability: ', self.klevels[-1])
 
-                while(True):
-                    if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
-                        print("adjust threshold")
-                        if self.klevels[-1] - self.klevel < 0:
-                            inOrDe = 0
-                        else:
-                            inOrDe = 1
-                        delta_tau = self.reach.adjustTauNew(self.pOrN, start_step, end_step, inOrDe, self.detector)
-                        if not np.any(delta_tau):
-                            print("not any delta_tau")
-                            exit()
-                        print("delta tao", delta_tau)
-                        self.detector.adjust(delta_tau, inOrDe)
-                        self.taos[-1] = deepcopy(self.detector.tao)
-                        print("self.taos", self.taos[-1])
+
+                # RT adjustment
+                if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
+                    print("adjust threshold")
+                    if self.klevels[-1] - self.klevel < 0:
+                        inOrDe = 0
                     else:
-                        break
-
-                    self.detectResults[-1] = self.detector.detectagain1(residual)
-                    alarm = self.detector.alarmOrN()
-                    if alarm:
-                        print("alarm at", exp.model.cur_index)
-                        # self.detector.continueWork()
-                        return
-
-                    for k in range(3 + justAuth):
-                        # bound from detector
-                        theta1 = self.boundByDetector(self.i - 5 - justAuth + k + 1)
-                        t = theta1.reshape(1, 5, 2)  # only use detector estimation
-                        self.theta[self.i - 5 - justAuth + k + 1] = t
-
+                        inOrDe = 1
+                    delta_tau = self.reach.adjustTauRT(self.pOrN, start_step, end_step, inOrDe, self.detector)
+                    # delta_tau = self.reach.adjustTauNew(self.pOrN, start_step, end_step, inOrDe, self.detector)
+                    if not np.any(delta_tau):
+                        print("not any delta_tau")
+                        exit()
+                    print("delta tao", delta_tau)
+                    self.detector.adjust(delta_tau, inOrDe)
+                    self.taos[-1] = deepcopy(self.detector.tao)
+                    print("self.taos", self.taos[-1])
+                else:
+                    break
+                self.detectResults[-1] = self.detector.detectagain1(residual)
+                alarm = self.detector.alarmOrN()
+                if alarm:
+                    print("alarm at", exp.model.cur_index)
+                    # self.detector.continueWork()
+                    return
+                for k in range(3 + justAuth):
                     # bound from detector
-                    theta1 = self.boundByDetector(self.i - 1)
-                    t = theta1  # only use detector estimation
-                    t = t.reshape(1, 5, 2)
-                    self.theta[-1] = t
-                    # if first == 1:
-                    #     self.klevels.append(0)
-                    print('theta ', self.theta[-1])
-                    print('i ', self.i)
-                    print('state', exp.model.states[self.i - 1])
-                    print('hat', self.y_hat[self.i - 1])
+                    theta1 = self.boundByDetector(self.i - 5 - justAuth + k + 1)
+                    t = theta1.reshape(1, 5, 2)  # only use detector estimation
+                    self.theta[self.i - 5 - justAuth + k + 1] = t
 
-                    x_hatz = self.y_hat[-1]
-                    thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
-                    kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
-                    self.klevels[-1] = kresult
-                    print('recovery-ability: ', self.klevels[-1])
+                # bound from detector
+                theta1 = self.boundByDetector(self.i - 1)
+                t = theta1  # only use detector estimation
+                t = t.reshape(1, 5, 2)
+                self.theta[-1] = t
+                # if first == 1:
+                #     self.klevels.append(0)
+                print('theta ', self.theta[-1])
+                print('i ', self.i)
+                print('state', exp.model.states[self.i - 1])
+                print('hat', self.y_hat[self.i - 1])
+
+                x_hatz = self.y_hat[-1]
+                thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
+                kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
+                self.klevels[-1] = kresult
+                print('recovery-ability: ', self.klevels[-1])
+
+                # while(True):
+                #     if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
+                #         print("adjust threshold")
+                #         if self.klevels[-1] - self.klevel < 0:
+                #             inOrDe = 0
+                #         else:
+                #             inOrDe = 1
+                #         delta_tau = self.reach.adjustTauNew(self.pOrN, start_step, end_step, inOrDe, self.detector)
+                #         if not np.any(delta_tau):
+                #             print("not any delta_tau")
+                #             exit()
+                #         print("delta tao", delta_tau)
+                #         self.detector.adjust(delta_tau, inOrDe)
+                #         self.taos[-1] = deepcopy(self.detector.tao)
+                #         print("self.taos", self.taos[-1])
+                #     else:
+                #         break
+                #
+                #     self.detectResults[-1] = self.detector.detectagain1(residual)
+                #     alarm = self.detector.alarmOrN()
+                #     if alarm:
+                #         print("alarm at", exp.model.cur_index)
+                #         # self.detector.continueWork()
+                #         return
+                #
+                #     for k in range(3 + justAuth):
+                #         # bound from detector
+                #         theta1 = self.boundByDetector(self.i - 5 - justAuth + k + 1)
+                #         t = theta1.reshape(1, 5, 2)  # only use detector estimation
+                #         self.theta[self.i - 5 - justAuth + k + 1] = t
+                #
+                #     # bound from detector
+                #     theta1 = self.boundByDetector(self.i - 1)
+                #     t = theta1  # only use detector estimation
+                #     t = t.reshape(1, 5, 2)
+                #     self.theta[-1] = t
+                #     # if first == 1:
+                #     #     self.klevels.append(0)
+                #     print('theta ', self.theta[-1])
+                #     print('i ', self.i)
+                #     print('state', exp.model.states[self.i - 1])
+                #     print('hat', self.y_hat[self.i - 1])
+                #
+                #     x_hatz = self.y_hat[-1]
+                #     thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
+                #     kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
+                #     self.klevels[-1] = kresult
+                #     print('recovery-ability: ', self.klevels[-1])
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:

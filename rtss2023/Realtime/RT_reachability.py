@@ -39,6 +39,8 @@ class Reachability:
         self.intersection = np.zeros(self.max_step)
         self.delta_theta = np.zeros(A.shape[0])
         self.reach = None
+        self.reachBoxLo = None
+        self.reachBoxUp = None
 
         # adjust Tau
         self.adjustDirs = None
@@ -51,6 +53,11 @@ class Reachability:
         self.detector = None
         self.emptySet = np.zeros(self.max_step)
         self.intersectCases = None # 0: impossible, 1: probable, 2: intersection, 3, empty
+        self.AdjustD_lo = None
+        self.AdjustD_up = None
+        self.AdjustStart = None
+        self.AdjustEnd = None
+        self.AdjustReach = np.zeros(self.max_step)
 
         # time
         self.timeIntersection = 0
@@ -134,23 +141,28 @@ class Reachability:
         inOrOuts = []
         iterations = []
         intersectCases = []
+        boxLo = []
+        boxUp = []
         self.emptySet = np.zeros(self.max_step)
         for i in range(self.max_step):
-            # ks[i], adjustDir, iteration = self.check_intersection(i)
-            ks[i], adjustDir, inOrOut, scope, iteration, intersectCase = self.check_intersectionNew(i)
-            # if i <= 5:
-            #     ks[i] = 0
+            # ks[i], adjustDir, inOrOut, scope, iteration, intersectCase = self.check_intersectionNew(i)
+            ks[i], adjustDir, inOrOut, scope, iteration, intersectCase, lo, up = self.check_intersectionRT(i)
             adjustDirs.append(adjustDir)
             inOrOuts.append(inOrOut)
             scopes.append(scope)
             iterations.append(iteration)
             intersectCases.append(intersectCase)
+            boxLo.append(lo)
+            boxUp.append(up)
+
         self.reach = ks
         print("ks", ks)
         self.adjustDirs = adjustDirs
         self.inOrOuts = inOrOuts
         self.scopes = scopes
         self.intersectCases = intersectCases
+        self.reachBoxLo = boxLo
+        self.reachBoxUp = boxUp
 
         k = np.sum(ks)
         if k == 0:
@@ -167,6 +179,93 @@ class Reachability:
                 end = self.max_step - 1
 
         return k, start, end
+
+    def check_intersectionRT(self, d):
+        ord = self.E[d].g.shape[1]
+        intersectCase = 1
+        t = self.preCheck(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+        # pre-check before explore
+        if t == -1:
+            self.emptySet[d] = 1
+            intersectCase = 3
+            result, adjustDir, inOrOut, scope, iteration, intersectCase, lo, up = self.check_intersectionOnce(d, intersectCase)
+            adjustDir = self.emtpySetDir(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+            return 0, adjustDir, np.zeros(self.A.shape[0]), np.zeros(self.A.shape[0]), iteration, intersectCase, lo, up
+        elif t == 1:
+            intersectCase = 0
+            result, adjustDir, inOrOut, scope, iteration, intersectCase, lo, up = self.check_intersectionOnce(d, intersectCase)
+            adjustDir, inOrOut, scope = self.adjustDirsNN(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+            return 0, adjustDir, inOrOut, scope, iteration, intersectCase, lo, up
+        else:
+            result, adjustDir, inOrOut, scope, iteration, intersectCase,  lo, up = self.check_intersectionOnce(d, intersectCase)
+            return result, adjustDir, inOrOut, scope, iteration, intersectCase, lo, up
+
+    def check_intersectionOnce(self, d, intersectCase):
+        lo = np.zeros(self.A.shape[0])
+        up = np.zeros(self.A.shape[0])
+        for i in range(self.A.shape[0]):
+            lo[i] = 100
+            up[i] = 100
+
+        ord = self.E[d].g.shape[1]
+        if intersectCase != 1:
+            new_lo, new_up = self.cropBox(self.D_lo[d], self.D_up[d], self.E_lo[d], self.E_up[d])
+        else:
+            new_lo = self.D_lo[d]
+            new_up = self.D_up[d]
+
+        start = self.E[d].c
+        next = start
+        center = (new_lo + new_up) / 2
+        dir = np.zeros(ord)
+        move = np.zeros(ord)
+        usedout = 1
+        i = 0
+        iteration = 0
+        result = 0
+
+        while i < ord:
+            t = self.getT(center - start, self.E[d].g[:, i])
+            if not self.newEqual(t, 0):
+                if t + dir[i] >= 1:
+                    move[i] = 1 - dir[i]
+                    dir[i] = 1
+                elif t + dir[i] <= -1:
+                    move[i] = -1 - dir[i]
+                    dir[i] = -1
+                elif -1 <= t + dir[i] <= 1:
+                    move[i] = t
+                    dir[i] = t + dir[i]
+                if not self.newEqual(move[i], 0):
+                    usedout = 0
+                next = start + move[i] * self.E[d].g[:, i]
+                re = self.checkinBox(new_lo, new_up, next)
+                lo, up = self.getReachBox(center, next, lo, up)
+                if re == 1:
+                    result = 1
+                    intersectCase = 2
+                start = next
+
+            if i == ord - 1:
+                iteration += 1
+                if iteration >= 30:
+                    break
+                if usedout == 0:
+                    i = -1
+                    usedout = 1
+                else:
+                    break
+            i += 1
+        adjustDir, inOrOut, scope = self.adjustDirNew(new_lo, new_up, next)
+        return result, adjustDir, inOrOut, scope, iteration, intersectCase, lo, up
+
+    def getReachBox(self, center, point, lo, up):
+        for i in range(self.A.shape[0]):
+            if point[i] < center[i] and point[i] > lo[i]:
+                lo[i] = point[i]
+            elif point[i] > center[i] and point[i] < up[i]:
+                up[i] = point[i]
+        return lo, up
 
     # check dth step's intersection
     # return 1/0: intersect or not, distance: closest point's distance
@@ -399,47 +498,6 @@ class Reachability:
                 else:
                     objStep = start - 1
             deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-
-        # if inOrDe == 0:
-        #     # increase k
-        #     exist = 0
-        #     if start == 0 and end == 0 and self.reach[0] == 1:
-        #         objStep = 1
-        #         exist = 1
-        #         deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-        #     if start == 0 and end != 0 and exist == 0:
-        #         objStep = end + 1
-        #         exist = 1
-        #         deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-        #     if start != 0 and exist == 0:
-        #         if end != self.max_step -1 and self.emptySet[end + 1] != 1:
-        #             objStep = end + 1
-        #         else:
-        #             objStep = start - 1
-        #         deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-        #     elif start != 0 and exist == 0:
-        #         objStep = 0
-        #         for i in range(self.max_step):
-        #             # Probable intersection
-        #             if np.any(self.inOrOuts[i]):
-        #                 objStep = i
-        #                 exist = 1
-        #                 # break
-        #         if exist == 0:
-        #             for i in range(self.max_step):
-        #                 if np.any(self.adjustDirs[i]) and self.emptySet[i] == 0:
-        #                     objStep = i
-        #             if objStep == 0:
-        #                 for i in range(self.max_step):
-        #                     if i <= objStep:
-        #                         continue
-        #                     # empty set
-        #                     if np.any(self.adjustDirs[i]) and self.emptySet[i] == 1:
-        #                         objStep = i
-        #                         break
-        #
-        #         deltaTau = self.getDeltaTauIncreaseDirNew(objStep)
-            # print("objstep", objStep)
         else:
             # decrease k
             objStep = start + 1
@@ -448,6 +506,26 @@ class Reachability:
         endTime = time.time()
         self.timeAdjust += endTime - startTime
         return deltaTau
+
+    def adjustTauRT(self, pOrN, start, end, inOrDe, detector):
+        deltaTau = np.zeros(self.A.shape[0])
+        while(True):
+            self.adjustCheck()
+
+        return deltaTau
+
+
+    def adjustCheck(self):
+        for i in range(self.max_step):
+            flag = 1
+            for j in range(self.A.shape[0]):
+                if self.AdjustD_lo[i][j] > self.AdjustD_up[i][j]:
+                    flag = 0
+                if self.AdjustD_lo[i][j] > self.E_up[i][j]:
+                    flag = 0
+                if self.AdjustD_up[i][j] < self.E_lo[i][j]:
+                    flag = 0
+            self.AdjustReach[i] = flag
 
 
     def getSNorm(self, D: Zonotope):
