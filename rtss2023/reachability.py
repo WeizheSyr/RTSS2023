@@ -125,6 +125,7 @@ class Reachability:
 
     # calculate k level recoverability of the current system
     def k_level(self, x_hat, theta):
+        # startReach = time.time()
         self.D2, self.D3 = self.reach_D23(x_hat, theta)
         self.D_lo, self.D_up = self.D_bound()
 
@@ -146,7 +147,7 @@ class Reachability:
             iterations.append(iteration)
             intersectCases.append(intersectCase)
         self.reach = ks
-        print("ks", ks)
+        # print("ks", ks)
         self.adjustDirs = adjustDirs
         self.inOrOuts = inOrOuts
         self.scopes = scopes
@@ -166,6 +167,10 @@ class Reachability:
             if i == self.max_step - 1 and end == 0:
                 end = self.max_step - 1
 
+        # endReach = time.time()
+        # self.timeIntersection = self.timeIntersection + endReach - startReach
+        # self.numIntersection = self.numIntersection + 1
+        # print("avg:", self.timeIntersection / self.numIntersection)
         return k, start, end
 
     # check dth step's intersection
@@ -227,7 +232,7 @@ class Reachability:
             if i == ord - 1:
                 # print("one iteration")
                 iteration += 1
-                if iteration >= 50:
+                if iteration >= 30:
                     break
                 if usedout == 0:
                     i = -1
@@ -298,7 +303,7 @@ class Reachability:
             if i == ord - 1:
                 # print("one iteration")
                 iteration += 1
-                if iteration >= 50:
+                if iteration >= 25:
                     break
                 if usedout == 0:
                     i = -1
@@ -444,11 +449,11 @@ class Reachability:
             deltaTau = self.getDeltaTau(objStep)
         endTime = time.time()
         self.timeAdjust += endTime - startTime
-        print("avg adjust time: ", self.timeAdjust / self.numAdjust)
+        # print("avg adjust time: ", self.timeAdjust / self.numAdjust)
         return deltaTau
 
     def adjustTauNew(self, pOrN, start, end, inOrDe, detector):
-        print("start:", start, "end", end)
+        # print("start:", start, "end", end)
         self.detector = detector
         self.numAdjust += 1
         startTime = time.time()
@@ -682,11 +687,11 @@ class Reachability:
         #         deltaTau[int(np.argmax(self.detector.tao))] = (self.detector.tao[i] - self.detector.iniTao[i]) / 2
         #         return deltaTau
 
-        print("inOrOuts", self.inOrOuts[d])
-        print("self.adjustDirs[d]", self.adjustDirs[d])
-        print("empty set", self.emptySet[d])
-        if not np.any(self.inOrOuts[d]):
-            print("no in")
+        # print("inOrOuts", self.inOrOuts[d])
+        # print("self.adjustDirs[d]", self.adjustDirs[d])
+        # print("empty set", self.emptySet[d])
+        # if not np.any(self.inOrOuts[d]):
+            # print("no in")
         if np.sum(self.inOrOuts[d]) != 0:
             numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
             numDim = int(numDim)
@@ -738,12 +743,12 @@ class Reachability:
 
     def getDeltaTauIncreaseKNew(self, d):
         deltaTau = np.zeros(self.A.shape[0])
-        print("inOrOuts", self.inOrOuts[d])
-        print("self.adjustDirs[d]", self.adjustDirs[d])
-        print("empty set", self.emptySet[d])
+        # print("inOrOuts", self.inOrOuts[d])
+        # print("self.adjustDirs[d]", self.adjustDirs[d])
+        # print("empty set", self.emptySet[d])
         # probable intersection
         if self.intersectCases[d] == 1:
-            print("probable intersection")
+            # print("probable intersection")
             numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
             numDim = int(numDim)
             supDim = []
@@ -754,7 +759,7 @@ class Reachability:
 
         # empty set or impossible intersect
         else:
-            print("empty set or impossible intersect")
+            # print("empty set or impossible intersect")
             supDim = []
             for i in range(self.A.shape[0]):
                 if self.adjustDirs[d][i] != 0:
@@ -915,7 +920,7 @@ class Reachability:
         #     deltaTau[i] = self.detector.tao[i] * 0.1
         return deltaTau
 
-        print("self.adjustDirs[d]", self.adjustDirs[d])
+        # print("self.adjustDirs[d]", self.adjustDirs[d])
         deltaTau = np.zeros(self.A.shape[0])
         supDim = np.argmin(self.scopes[d])
         argminTau = self.detector.minTau()
@@ -966,21 +971,21 @@ class Reachability:
         return deltaTau
 
     def getDeltaTauDecreaseKAllDim(self, d):
-        print("self.adjustDirs[d]", self.adjustDirs[d])
+        # print("self.adjustDirs[d]", self.adjustDirs[d])
         deltaTau = np.zeros(self.A.shape[0])
         f = self.adjustDirs[d]
         for i in range(self.A.shape[0]):
             f[i] = np.abs(self.adjustDirs[d][i])
         supDim = np.argmin(f)
-        print("self.adjustDirs[d][supDim]", self.adjustDirs[d][supDim])
-        print("supdim", supDim)
+        # print("self.adjustDirs[d][supDim]", self.adjustDirs[d][supDim])
+        # print("supdim", supDim)
 
         coefficients = np.zeros(self.A.shape[0])
         if self.adjustDirs[d][supDim] > 0:
             coefficients = np.array(self.deltaCs[d][supDim]) - np.array(self.deltaEs[d][supDim])
         elif self.adjustDirs[d][supDim] < 0:
             coefficients = np.array(self.deltaCs[d][supDim]) + np.array(self.deltaEs[d][supDim])
-        print("coefficients", coefficients)
+        # print("coefficients", coefficients)
 
         if self.adjustDirs[d][supDim] > 0:
             existP = 0
@@ -1006,7 +1011,7 @@ class Reachability:
         return deltaTau
 
     def getDeltaTauDecreaseKNew(self, d):
-        print("self.adjustDirs[d]", self.adjustDirs[d])
+        # print("self.adjustDirs[d]", self.adjustDirs[d])
         deltaTau = np.zeros(self.A.shape[0])
 
         coefficients = np.zeros(self.A.shape)

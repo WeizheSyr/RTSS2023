@@ -146,7 +146,7 @@ class Reachability:
             iterations.append(iteration)
             intersectCases.append(intersectCase)
         self.reach = ks
-        print("ks", ks)
+        # print("ks", ks)
         self.adjustDirs = adjustDirs
         self.inOrOuts = inOrOuts
         self.scopes = scopes
@@ -327,7 +327,7 @@ class Reachability:
 
     # inOrDe 0: decrease, 1: increase
     def adjustTauNew(self, pOrN, start, end, inOrDe, detector):
-        print("start:", start, "end", end)
+        # print("start:", start, "end", end)
         self.detector = detector
         self.numAdjust += 1
         startTime = time.time()
@@ -426,6 +426,7 @@ class Reachability:
 
     # get delta tau for increasing recoveryability k
     def getDeltaTauIncreaseDirNew(self, d):
+        startTime = time.time()
         if np.sum(self.inOrOuts[d]) != 0:
             numDim = self.A.shape[0] - (np.sum(self.inOrOuts[d]))
             numDim = int(numDim)
@@ -481,6 +482,8 @@ class Reachability:
 
         if not np.any(deltaTau):
             print("not any")
+        endTime = time.time()
+        print(endTime - startTime)
         return deltaTau
 
     # get delta tau for decreasing recoveryability k

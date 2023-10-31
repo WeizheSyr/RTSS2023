@@ -3,7 +3,8 @@ from Air_Authenticate import Authenticate
 from Air_Reachability import Reachability
 from utils.formal.zonotope import Zonotope
 from copy import deepcopy
-np.set_printoptions(suppress=True)
+# np.set_printoptions(suppress=True)
+import time
 
 
 class SystemALLDim:
@@ -53,6 +54,16 @@ class SystemALLDim:
         self.taos = []
 
         justAuth = 0
+
+        self.ReachTime = 0
+        self.numReach = 0
+        self.AuthTime = 0
+        self.numAuth = 0
+        self.stateTime = 0
+        self.numState = 0
+        self.numAdjust = 0
+        self.avgAdj = 0
+        self.adjTime = 0
 
         while True:
             first = 0
@@ -108,14 +119,22 @@ class SystemALLDim:
                 authQueueFeed1 = self.authQueueFeed[::-1]
                 self.auth.getInputs(authQueueInput1)
                 self.auth.getFeedbacks(authQueueFeed1)
+
+                # startAuth = time.time()
                 self.auth.getAuth()
-                print('auth.x', self.auth.x)
-                print('states', exp.model.states[exp.model.cur_index - self.auth.timestep])
-                print('x_hat', self.y_hat[exp.model.cur_index - self.auth.timestep])
+                # print('auth.x', self.auth.x)
+                # print('states', exp.model.states[exp.model.cur_index - self.auth.timestep])
+                # print('x_hat', self.y_hat[exp.model.cur_index - self.auth.timestep])
                 self.auth.getAllBound()
+                # endAuth = time.time()
+                # self.AuthTime = self.AuthTime + endAuth - startAuth
+                # self.numAuth = self.numAuth + 1
+                # print("auth time:", self.AuthTime / self.numAuth)
+
+
                 self.authT.append(exp.model.cur_index - self.auth.timestep)
-                print('timestep ', self.authT[-1])
-                print('auth.bound', self.auth.bound)
+                # print('timestep ', self.authT[-1])
+                # print('auth.bound', self.auth.bound)
 
                 # from auth bound to theta
                 t = self.boundToTheta(self.auth.x, self.auth.bound, self.y_hat[exp.model.cur_index - self.auth.timestep])
@@ -123,7 +142,7 @@ class SystemALLDim:
                     self.theta[0] = t
                 else:
                     t = t.reshape(1, 3, 2)
-                    print('rewrite ', self.i - 2, t)
+                    # print('rewrite ', self.i - 2, t)
                     self.theta[self.i - 3] = t
 
                 # update real state calculate
@@ -139,25 +158,31 @@ class SystemALLDim:
                     # Rewrite previous theta
                     else:
                         self.theta[self.i - 3 + k + 1] = t
-                        print("recalculate, ", self.i - 3 + k + 1, self.theta[self.i - 3 + k + 1][0])
+                        # print("recalculate, ", self.i - 3 + k + 1, self.theta[self.i - 3 + k + 1][0])
 
             else:
                 justAuth = justAuth + 1
 
             if len(self.authT) != 0 and self.authT[-1] != self.i:
                 # bound from detector
+
+                # startState = time.time()
                 theta1 = self.boundByDetector(self.i - 1)
-                # combine bound
-                # t = self.combineBound(theta1, theta2)
+                # endState = time.time()
+                # self.stateTime = self.stateTime + endState - startState
+                # self.numState += 1
+                # print(self.stateTime / self.numState)
+
+
                 t = theta1                                      # only use detector estimation
                 t = t.reshape(1, 3, 2)
                 self.theta = np.append(self.theta, t, axis=0)
                 if first == 1:
                     self.klevels.append(0)
-                print('theta ', self.theta[-1])
-                print('i ', self.i)
-                print('state', exp.model.states[self.i - 1])
-                print('hat', self.y_hat[self.i - 1])
+                # print('theta ', self.theta[-1])
+                # print('i ', self.i)
+                # print('state', exp.model.states[self.i - 1])
+                # print('hat', self.y_hat[self.i - 1])
 
                 # check correctness
                 # if self.i >= 9:
@@ -168,26 +193,39 @@ class SystemALLDim:
                 # reachability anaylze
                 x_hatz = self.y_hat[-1]
                 thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
+                # start_reach = time.time()
                 kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                 self.klevels.append(kresult)
+                # end_reach = time.time()
+                # self.ReachTime += end_reach - start_reach
+                # self.numReach += 1
+                # print("avgReach: ", self.ReachTime / self.numReach)
+
                 self.originalK.append(kresult)
-                print('recovery-ability: ', self.klevels[-1])
+                # print('recovery-ability: ', self.klevels[-1])
 
                 while(True):
                     if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
-                        print("adjust threshold")
+                        # print("adjust threshold")
                         if self.klevels[-1] - self.klevel < 0:
                             inOrDe = 0
                         else:
                             inOrDe = 1
+
+                        self.numAdjust += 1
+                        startAdj = time.time()
                         delta_tau = self.reach.adjustTauNew(self.pOrN, start_step, end_step, inOrDe, self.detector)
+                        endAdj = time.time()
+                        self.adjTime += endAdj - startAdj
+                        self.avgAdj = self.adjTime / self.numAdjust
+
                         if not np.any(delta_tau):
                             print("not any delta_tau")
                             exit()
-                        print("delta tao", delta_tau)
+                        # print("delta tao", delta_tau)
                         self.detector.adjust(delta_tau, inOrDe)
                         self.taos[-1] = deepcopy(self.detector.tao)
-                        print("self.taos", self.taos[-1])
+                        # print("self.taos", self.taos[-1])
                     else:
                         break
 
@@ -211,16 +249,16 @@ class SystemALLDim:
                     self.theta[-1] = t
                     # if first == 1:
                     #     self.klevels.append(0)
-                    print('theta ', self.theta[-1])
-                    print('i ', self.i)
-                    print('state', exp.model.states[self.i - 1])
-                    print('hat', self.y_hat[self.i - 1])
+                    # print('theta ', self.theta[-1])
+                    # print('i ', self.i)
+                    # print('state', exp.model.states[self.i - 1])
+                    # print('hat', self.y_hat[self.i - 1])
 
                     x_hatz = self.y_hat[-1]
                     thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
                     kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                     self.klevels[-1] = kresult
-                    print('recovery-ability: ', self.klevels[-1])
+                    # print('recovery-ability: ', self.klevels[-1])
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:

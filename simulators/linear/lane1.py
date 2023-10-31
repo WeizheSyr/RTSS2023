@@ -5,10 +5,10 @@ import numpy as np
 from utils.simulator import Simulator
 from utils.controllers.LQR import LQR
 # import torch
-cf_ = 155494.663
-cr_ = 155494.663
-wheelbase_ = 2.852
-steer_ratio_ = 16
+cf_ = 1600 * 2
+cr_ = 1700 * 2
+wheelbase_ = 2.9
+steer_ratio_ = np.radians(30.0)
 steer_single_direction_max_degree_ = 470.0
 mass_fl = 520
 mass_fr = 520
@@ -92,11 +92,8 @@ if __name__ == "__main__":
     ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
     noise = {
         'process': {
-            # 'type': 'white',
-            # 'param': {'C': np.eye(4) * 0.0001}
-            'type': 'box_uniform',
-            'param': {'lo': np.ones(4) * -0.002,
-                      'up': np.ones(4) * 0.002}
+            'type': 'white',
+            'param': {'C': np.eye(4) * 0.0001}
         }
     }
     lk = LaneKeeping('test', dt, max_index, noise)
@@ -113,7 +110,6 @@ if __name__ == "__main__":
     y_arr = [x[0] for x in lk.outputs[:max_index + 1]]
 
     print(lk.outputs[600])
-    print(np.radians(16.0))
 
     plt.plot(t_arr, y_arr, t_arr, ref)
     plt.show()

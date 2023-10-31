@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
-tao = np.ones(7) * 0.05
+tao = np.ones(7) * 0.03
 # tao = [0.5] * 7
 detector = window(tao, 7, 10)
 exp = Platoon

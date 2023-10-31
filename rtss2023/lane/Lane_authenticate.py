@@ -2,11 +2,10 @@ import os.path
 import numpy as np
 import cvxpy as cp
 from simulators.linear.platoon import Platoon
-import time
 
 
 class Authenticate:
-    def __init__(self, exp, n, p=0.002, inf=0.5):
+    def __init__(self, exp, n, p=0.002, inf=0.02):
         self.u = None
         self.y = None
         self.INF = inf
@@ -65,7 +64,6 @@ class Authenticate:
         self.y = feed
 
     def getAuth(self, att=0):
-        # start = time.time()
         self.U = self.getU()
         # print('u', self.u)
         # print('y', self.y)
@@ -98,12 +96,6 @@ class Authenticate:
         ]
         problem = cp.Problem(cp.Minimize(obj), constraints)
         problem.solve(solver=cp.SCIPY)
-        # end = time.time()
-        # print(end - start)
-        # start = time.time()
-        # problem.solve(solver=cp.SCIPY)
-        # end = time.time()
-        # print(end - start)
 
         # print('x.value', x.value)
         for i in range(self.m):

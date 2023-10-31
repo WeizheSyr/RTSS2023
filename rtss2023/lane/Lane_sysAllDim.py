@@ -1,10 +1,10 @@
 import numpy as np
-from Air_authenticate import Authenticate
-from Air_reachability1 import Reachability
+from Lane_authenticate import Authenticate
+from Lane_reachability import Reachability
 from utils.formal.zonotope import Zonotope
 from copy import deepcopy
+
 np.set_printoptions(suppress=True)
-import time
 
 
 class SystemALLDim:
@@ -23,14 +23,14 @@ class SystemALLDim:
         self.y1 = []
 
         # authentication
-        self.auth = Authenticate(exp.model, 1)    # 4 for platoon
+        self.auth = Authenticate(exp.model, 1)    # 1 for lane
         self.authQueueInput = []            # authentication input queue
         self.authQueueFeed = []             # authentication feedback queue
         self.authTimestep = 0               # timestep 14 for platoon
         self.authT = []                     # authentication timestep in system
 
         # real state calculate
-        self.theta = np.zeros([1, 5, 2])  # timestep, dimension, low or up
+        self.theta = np.zeros([1, 4, 2])  # timestep, dimension, low or up
         self.est1 = []
         self.est2 = []
 
@@ -42,26 +42,16 @@ class SystemALLDim:
         self.pOrN = None
 
         # recovery-ability
-        self.pz = Zonotope.from_box(np.ones(5) * -0.01, np.ones(5) * 0.01)    # process noise
-        self.uz = Zonotope.from_box(np.array([-30]), np.array([30]))
-        self.target_low = np.array([10, -4, -0.5, 12, -30])
-        self.target_up = np.array([20, 4, 0.5, 16, 30])
-        self.klevel = 3                                                      # keep k level recover-ability
+        self.pz = Zonotope.from_box(np.ones(4) * -0.002, np.ones(4) * 0.002)    # process noise
+        self.uz = Zonotope.from_box(np.ones(1) * -0.50, np.ones(1) * 0.50)
+        self.target_low = np.array([-0.15, -0.25, -0.15, -0.25])
+        self.target_up = np.array([0.15, 0.25, 0.15, 0.25])
+        self.klevel = 5                                                      # keep k level recover-ability
         self.klevels = []                                                        # k-level recover-ability
         self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
         self.originalK = []
 
         self.taos = []
-
-        self.ReachTime = 0
-        self.numReach = 0
-        self.AuthTime = 0
-        self.numAuth = 0
-        self.stateTime = 0
-        self.numState = 0
-        self.numAdjust = 0
-        self.avgAdj = 0
-        self.adjTime = 0
 
         justAuth = 0
 
@@ -72,21 +62,24 @@ class SystemALLDim:
             self.i += 1
             self.index_list.append(exp.model.cur_index)
             self.reference_list.append(exp.ref[self.i])
-            self.real_cur_y = exp.model.cur_x
-            self.y.append(exp.model.cur_x)
-            self.y_tilda.append(exp.model.cur_x)
+            self.real_cur_y = exp.model.cur_y
+            self.y.append(exp.model.cur_y)
+            self.y_tilda.append(exp.model.cur_y)
             self.y_hat.append(exp.model.predict)
+
+            # # without attack
+            # if exp.model.cur_index < exp.attack_start_index:
+            #     continue
+
+            # label .begin
 
             # under attack
             if exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration - 1:
                 # attack here
                 attack_step = exp.model.cur_index - exp.attack_start_index
-                exp.model.cur_x[0] = exp.model.cur_x[0] + attack[attack_step]
-                exp.model.cur_y = exp.model.C @ exp.model.cur_x
-                exp.model.states[-1] = deepcopy(exp.model.cur_x)
-                exp.model.outputs[-1] = deepcopy(exp.model.cur_y)
+                exp.model.cur_y[0] = exp.model.cur_y[0] + attack[attack_step]
                 # sensor measurement with attack
-                self.y_tilda[-1] = exp.model.cur_x
+                self.y_tilda[-1] = exp.model.cur_y
                 self.y_tilda1.append(self.y_tilda[-1])
                 # sensor measurement without attack
                 self.y1.append(self.y[-1])
@@ -101,7 +94,8 @@ class SystemALLDim:
             if alarm:
                 print("alarm at", exp.model.cur_index)
                 return
-            if self.i >= 80:
+            # if self.i >= 200:
+            if self.i >= 30:
                 return
 
             # authentication
@@ -109,7 +103,7 @@ class SystemALLDim:
                 self.authQueueInput.pop()
                 self.authQueueFeed.pop()
             self.authQueueInput.insert(0, exp.model.inputs[exp.model.cur_index - 1])
-            self.authQueueFeed.insert(0, exp.model.states[exp.model.cur_index - 1])
+            self.authQueueFeed.insert(0, exp.model.feedbacks[exp.model.cur_index - 1])
 
             self.authTimestep += 1
             if self.authTimestep == self.auth.timestep:
@@ -119,117 +113,83 @@ class SystemALLDim:
                 authQueueFeed1 = self.authQueueFeed[::-1]
                 self.auth.getInputs(authQueueInput1)
                 self.auth.getFeedbacks(authQueueFeed1)
-
-                # startAuth = time.time()
                 self.auth.getAuth()
-                # print('auth.x', self.auth.x)
-                # print('states', exp.model.states[exp.model.cur_index - self.auth.timestep])
-                # print('x_hat', self.y_hat[exp.model.cur_index - self.auth.timestep])
+                print('auth.x', self.auth.x)
+                print('states', exp.model.feedbacks[exp.model.cur_index - self.auth.timestep])
+                print('x_hat', self.y_hat[exp.model.cur_index - self.auth.timestep])
                 self.auth.getAllBound()
-                # endAuth = time.time()
-                # self.AuthTime = self.AuthTime + endAuth - startAuth
-                # self.numAuth = self.numAuth + 1
-                # print("auth time:", self.AuthTime / self.numAuth)
-
-
                 self.authT.append(exp.model.cur_index - self.auth.timestep)
-                # print('timestep ', self.authT[-1])
-                # print('auth.bound', self.auth.bound)
+                print('timestep ', self.authT[-1])
+                print('auth.bound', self.auth.bound)
 
                 # from auth bound to theta
                 t = self.boundToTheta(self.auth.x, self.auth.bound, self.y_hat[exp.model.cur_index - self.auth.timestep])
                 if len(self.authT) == 1:
                     self.theta[0] = t
                 else:
-                    t = t.reshape(1, 5, 2)
-                    # print('rewrite ', self.i - 4, t)
-                    self.theta[self.i - 5] = t
+                    t = t.reshape(1, 4, 2)
+                    print('rewrite ', self.i - 3, t)
+                    self.theta[self.i - 4] = t
 
                 # update real state calculate
-                for k in range(3):
-                    theta1 = self.boundByDetector(self.i - 5 + k + 1)
-                    t = theta1.reshape(1, 5, 2)     # only use detector estimation
+                for k in range(2):
+                    theta1 = self.boundByDetector(self.i - 4 + k + 1)
+                    t = theta1.reshape(1, 4, 2)     # only use detector estimation
 
                     # first time authentication
-                    if len(self.theta) <= 5:
+                    if len(self.theta) <= 4:
                         self.theta = np.append(self.theta, t, axis=0)
                         first = 1
                         self.klevels.append(0)
                     # Rewrite previous theta
                     else:
-                        self.theta[self.i - 5 + k + 1] = t
-                        # print("recalculate, ", self.i - 5 + k + 1, self.theta[self.i - 5 + k + 1][0])
+                        self.theta[self.i - 4 + k + 1] = t
+                        print("recalculate, ", self.i - 4 + k + 1, self.theta[self.i - 4 + k + 1][0])
 
             else:
                 justAuth = justAuth + 1
 
             if len(self.authT) != 0 and self.authT[-1] != self.i:
+                # bound from system dynamic
+                # theta2 = self.boundByDynamic(self.i - 1, exp.model.inputs[exp.model.cur_index - 1])
                 # bound from detector
-
-
-                # startState = time.time()
                 theta1 = self.boundByDetector(self.i - 1)
-                # endState = time.time()
-                # self.stateTime = self.stateTime + endState - startState
-                # self.numState += 1
-                # print(self.stateTime / self.numState)
-
-
-
+                # combine bound
+                # t = self.combineBound(theta1, theta2)
                 t = theta1                                      # only use detector estimation
-                t = t.reshape(1, 5, 2)
+                t = t.reshape(1, 4, 2)
                 self.theta = np.append(self.theta, t, axis=0)
                 if first == 1:
                     self.klevels.append(0)
-                # print('theta ', self.theta[-1])
-                # print('i ', self.i)
-                # print('state', exp.model.states[self.i - 1])
-                # print('hat', self.y_hat[self.i - 1])
-
-                # check correctness
-                # if self.i >= 9:
-                #     for i in range(7):
-                #         if self.theta[-1][i][0] >= self.theta[-1][i][1]:
-                #             print("violate")
+                print('theta ', self.theta[-1][0])
+                print('i ', self.i)
+                print('state', exp.model.feedbacks[self.i - 1][0])
+                print('hat', self.y_hat[self.i - 1][0])
 
                 # reachability anaylze
                 x_hatz = self.y_hat[-1]
                 thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
-                # start_reach = time.time()
                 kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
-                # end_reach = time.time()
-                # self.ReachTime += end_reach - start_reach
-                # self.numReach += 1
-                # print("avgReach: ", self.ReachTime / self.numReach)
-
                 self.klevels.append(kresult)
                 self.originalK.append(kresult)
-                # print('recovery-ability: ', self.klevels[-1])
-
-
+                print('recovery-ability: ', self.klevels[-1])
 
                 while(True):
                     if self.klevels[-1] - self.klevel < 0 or self.klevels[-1] - self.klevel > 3:
-                        # print("adjust threshold")
+                        print("adjust threshold")
                         if self.klevels[-1] - self.klevel < 0:
                             inOrDe = 0
                         else:
                             inOrDe = 1
-
-                        self.numAdjust += 1
-                        startAdj = time.time()
                         delta_tau = self.reach.adjustTauNew(self.pOrN, start_step, end_step, inOrDe, self.detector)
-                        endAdj = time.time()
-                        self.adjTime += endAdj - startAdj
-                        self.avgAdj = self.adjTime / self.numAdjust
-
+                        # delta_tau = self.reach.adjustTau(self.pOrN, start_step, end_step)
                         if not np.any(delta_tau):
                             print("not any delta_tau")
                             exit()
-                        # print("delta tao", delta_tau)
+                        print("delta tao", delta_tau)
                         self.detector.adjust(delta_tau, inOrDe)
                         self.taos[-1] = deepcopy(self.detector.tao)
-                        # print("self.taos", self.taos[-1])
+                        print("self.taos", self.taos[-1])
                     else:
                         break
 
@@ -240,29 +200,29 @@ class SystemALLDim:
                         # self.detector.continueWork()
                         return
 
-                    for k in range(3 + justAuth):
+                    for k in range(2 + justAuth):
                         # bound from detector
-                        theta1 = self.boundByDetector(self.i - 5 - justAuth + k + 1)
-                        t = theta1.reshape(1, 5, 2)  # only use detector estimation
-                        self.theta[self.i - 5 - justAuth + k + 1] = t
+                        theta1 = self.boundByDetector(self.i - 4 - justAuth + k + 1)
+                        t = theta1.reshape(1, 4, 2)  # only use detector estimation
+                        self.theta[self.i - 4 - justAuth + k + 1] = t
 
                     # bound from detector
                     theta1 = self.boundByDetector(self.i - 1)
                     t = theta1  # only use detector estimation
-                    t = t.reshape(1, 5, 2)
+                    t = t.reshape(1, 4, 2)
                     self.theta[-1] = t
                     # if first == 1:
                     #     self.klevels.append(0)
-                    # print('theta ', self.theta[-1])
-                    # print('i ', self.i)
-                    # print('state', exp.model.states[self.i - 1])
-                    # print('hat', self.y_hat[self.i - 1])
+                    print('theta ', self.theta[-1])
+                    print('i ', self.i)
+                    print('state', exp.model.feedbacks[self.i - 1])
+                    print('hat', self.y_hat[self.i - 1])
 
                     x_hatz = self.y_hat[-1]
                     thetaz = Zonotope.from_box(self.theta[-1, :, 0], self.theta[-1, :, 1])
                     kresult, start_step, end_step = self.reach.k_level(x_hatz, thetaz)
                     self.klevels[-1] = kresult
-                    # print('recovery-ability: ', self.klevels[-1])
+                    print('recovery-ability: ', self.klevels[-1])
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
@@ -288,6 +248,7 @@ class SystemALLDim:
         self.pOrN = pOrN
         l = len(self.y)
         rsum = np.zeros(self.detector.m)
+        # for i in range(t):
         if len(self.residuals) >= self.detector.w:
             for i in range(self.detector.w):
                 rsum += abs(self.residuals[t - i])
@@ -317,3 +278,25 @@ class SystemALLDim:
                 theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] - 0.002)[i] + A_theta_lo
                 theta1[i][1] = (-self.y_hat[t] - self.A @ self.y_tilda[t - 1] + self.A @ self.y_hat[t - 1] + 0.002 + self.y_tilda[t])[i] + A_theta_up
         return theta1
+
+
+    # unused function
+    def boundByDynamic(self, t, u):
+        theta2 = np.zeros([7, 2])
+        theta2[:, 0] = self.A @ (self.y_hat[t - 1] + self.theta[t - 1, :, 0]) + self.B @ u - 0.002
+        theta2[:, 1] = self.A @ (self.y_hat[t - 1] + self.theta[t - 1, :, 1]) + self.B @ u + 0.002
+        return theta2
+
+    def combineBound(self, theta1, theta2):
+        theta = np.zeros([self.detector.m, 2])
+        for i in range(len(theta)):
+            if theta1[i][0] > theta2[i][0]:
+                theta[i][0] = theta1[i][0]
+            else:
+                theta[i][0] = theta2[i][0]
+
+            if theta1[i][1] > theta2[i][1]:
+                theta[i][1] = theta2[i][1]
+            else:
+                theta[i][1] = theta1[i][1]
+        return theta

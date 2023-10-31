@@ -3,6 +3,7 @@ from simulators.linear.platoon import Platoon
 from simulators.linear.F16 import F16
 from simulators.linear.boeing747 import Boeing
 from simulators.linear.aircraft_pitch import AircraftPitch
+from simulators.linear.lane_keeping import LaneKeeping
 import numpy as np
 from utils.attack import Attack
 
@@ -90,6 +91,24 @@ class Platoon:
         }
     }
     model = Platoon('test', dt, max_index, noise)
+    # attack_start_index = 400        # for time-consuming
+    # attack_start_index = 55     # for three detector
+    attack_start_index = 65
+
+class Lane:
+    name = 'LaneKeeping'
+    max_index = 1000
+    dt = 0.04
+    # ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
+    ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
+    noise = {
+        'process': {
+            'type': 'box_uniform',
+            'param': {'lo': np.ones(4) * -0.002,
+                      'up': np.ones(4) * 0.002}
+        }
+    }
+    model = LaneKeeping('test', dt, max_index, noise)
     # attack_start_index = 400        # for time-consuming
     # attack_start_index = 55     # for three detector
     attack_start_index = 65

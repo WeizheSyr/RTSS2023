@@ -52,6 +52,9 @@ tao_arr4 = [x[4] for x in sys.taos]
 
 reach = [x for x in sys.klevels]
 
+print(sys.numAdjust)
+print(sys.avgAdj * 1.5 * sys.numAdjust/sys.i)
+
 plt.figure()
 plt.subplot(4, 2, 1)
 plt.plot(x_low, c='red', linestyle=':', label='x_low')
