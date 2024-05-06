@@ -16,12 +16,15 @@ A = [[-b / J, Kt / J], [-Ke / L, -R / L]]
 B = [[0], [1 / L]]
 C = [[1, 0]]
 
-x_0 = np.array([0.0, 0.0])
+x_0 = np.array([2.0, 0.0])
 
 # control parameters
 P = 19
 I = 37
 D = 0.1
+# P = 1000000
+# I = 0
+# D = 0
 
 control_limit = {
     'lo': np.array([0]),
@@ -80,11 +83,11 @@ class MotorSpeed(Simulator):
 if __name__ == "__main__":
     max_index = 500
     dt = 0.02
-    ref = [np.array([5])] * 201 + [np.array([4])] * 200 + [np.array([5])] * 100
+    ref = [np.array([0])] * 201 + [np.array([0])] * 200 + [np.array([0])] * 100
     noise = {
         'process': {
             'type': 'white',
-            'param': {'C': np.eye(2) * 0.1}
+            'param': {'C': np.eye(2) * 0.01}
         }
     }
     motor_speed = MotorSpeed('test', dt, max_index, noise)
@@ -100,9 +103,10 @@ if __name__ == "__main__":
     ref = [x[0] for x in motor_speed.refs[:max_index + 1]]
     y_arr = [x[0] for x in motor_speed.outputs[:max_index + 1]]
 
-    plt.plot(t_arr, y_arr, t_arr, ref)
+    # plt.plot(t_arr, y_arr, t_arr, ref)
+    plt.plot(t_arr, y_arr)
     plt.show()
 
-    u_arr = [x[0] for x in motor_speed.inputs[:max_index + 1]]
-    plt.plot(t_arr, u_arr)
-    plt.show()
+    # u_arr = [x[0] for x in motor_speed.inputs[:max_index + 1]]
+    # plt.plot(t_arr, u_arr)
+    # plt.show()

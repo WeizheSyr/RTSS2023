@@ -234,7 +234,7 @@ class Simulator:
         # res = solve_ivp(self.ode, ts, self.cur_x, args=(self.cur_u,))
         self.cur_index += 1
         # self.cur_x = res.y[:, -1]
-        self.post_x = self.cur_x
+        self.post_x = self.cur_y
         if self.model_type == 'linear':
             # print('B, U', self.sysd.B.shape, self.cur_u.shape)
             # print(self.cur_u)
@@ -253,7 +253,7 @@ class Simulator:
         if self.feedback_type:
             # self.cur_feedback = self.cur_x if self.feedback_type == 'state' else self.cur_y
             if self.feedback_type == 'state':
-                self.cur_feedback = deepcopy(self.cur_x)
+                self.cur_feedback = deepcopy(self.cur_y)
             else:
                 self.cur_feedback = self.cur_y
             # print(self.cur_feedback)
