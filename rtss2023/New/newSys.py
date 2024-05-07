@@ -23,20 +23,21 @@ class Sys:
         self.auth = Authenticate(exp.model, 4)  # 4 for platoon
         self.auth_input = []                # authentication input queue
         self.auth_feed = []                 # authentication feedback queue
-        self.auth_step = 0                   # timestep 14 for platoon
+        self.auth_step = 0                   # timestep 7 for platoon
         self.authT = []                         # authentication timestep in system
 
         # error calculator
-        self.theta = np.zeros([1, 7, 2])        # timestep, dimension of state, low/up
+        # self.theta = np.zeros([1, 7, 2])        # timestep, dimension of state, low/up
+        self.theta = []
 
         # residual calculator
         self.residuals = []
         self.detect_results = []
         self.detector = detector
-        self.pOrN = None
+        self.pOrN = [0] * self.detector.m
 
         # recoverability
-        self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # noise
+        self.pz = Zonotope.from_box(np.ones(7) * -0.001, np.ones(7) * 0.001)    # noise
         self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)            # control box
         self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
         self.target_up = np.array([1.2, 1.2, 1.2, 0.4, 0.4, 0.4, 0.4])
@@ -48,12 +49,17 @@ class Sys:
         # detector
         self.taus = []
 
-        justAuth = 0
-
         while True:
             first = 0
             exp.model.update_current_ref(exp.ref[self.i])
             exp.model.evolve()
+
+            # recoverability calculator
+            if self.i >= 30:
+
+
+
+
             self.i += 1
             self.index_list.append(exp.model.cur_index)
             self.reference_list.append(exp.ref[self.i])
@@ -79,8 +85,7 @@ class Sys:
             if alarm:
                 print("alarm at", exp.model.cur_index)
                 return
-            if self.i >= 200:
-            # if self.i >= 40:
+            if self.i >= 100:
                 return
 
             # authentication
@@ -91,45 +96,91 @@ class Sys:
             self.auth_feed.insert(0, exp.model.feedbacks[exp.model.cur_index - 1])
 
             self.auth_step += 1
-            if self.auth_step == self.auth.timestep:
-                justAuth = 0
+            # if self.auth_step == self.auth.timestep:
+            if self.auth_step >= 3 and len(self.auth_input) == self.auth.timestep:
+                print("auth at ", self.i)
                 self.auth_step = 0
                 authQueueInput1 = self.auth_input[::-1]
                 authQueueFeed1 = self.auth_feed[::-1]
                 self.auth.getInputs(authQueueInput1)
                 self.auth.getFeedbacks(authQueueFeed1)
-                self.auth.getAuth()
-                print('auth.x', self.auth.x)
-                print('states', self.x[exp.model.cur_index - self.auth.timestep])
-                print('x_hat', self.x_hat[exp.model.cur_index - self.auth.timestep])
-                self.auth.getAllBound()
+                t = self.auth.getAuth()
                 self.authT.append(exp.model.cur_index - self.auth.timestep)
-                print('auth timestep ', self.authT[-1])
+                if t:
+                    self.auth.getAllBound()
+                    print('auth x ', self.authT[-1])
+                else:
+                    self.auth.x = self.x[self.authT[-1]]
+                    for i in range(self.A.shape[0]):
+                        self.auth.bound[i, 0] = - 0.001 * 2
+                        self.auth.bound[i, 1] = 0.001 * 2
 
                 # from auth bound to theta
-                t = self.boundToTheta(self.auth.x, self.auth.bound,
-                                      self.x_hat[exp.model.cur_index - self.auth.timestep])
+                t = self.boundToTheta(self.auth.x, self.auth.bound, self.x_hat[self.authT[-1]])
                 if len(self.authT) == 1:
-                    self.theta[0] = t
+                    self.theta.append(t)
                 else:
-                    t = t.reshape(1, 7, 2)
-                    print('rewrite ', self.i - 6, t)
-                    self.theta[self.i - 7] = t
+                    self.theta[self.authT[-1]] = t
 
                 # update real state calculate
-                for k in range(5):
-                    theta1 = self.boundByDetector(self.i - 7 + k + 1)
-                    t = theta1.reshape(1, 7, 2)  # only use detector estimation
-
+                for k in range(self.auth.timestep - 2):
+                    theta1 = self.boundByDetector(self.authT[-1] + 1 + k)
                     # first time authentication
-                    if len(self.theta) <= 7:
-                        self.theta = np.append(self.theta, t, axis=0)
-                        first = 1
-                        self.klevels.append(0)
+                    if len(self.authT) == 1:
+                        self.theta.append(theta1)
                     # Rewrite previous theta
                     else:
-                        self.theta[self.i - 7 + k + 1] = t
-                        print("recalculate, ", self.i - 7 + k + 1, self.theta[self.i - 7 + k + 1][0])
+                        self.theta[self.authT[-1] + 1 + k] = theta1
 
+            # error estimator
+            if len(self.authT) != 0:
+                theta1 = self.boundByDetector(self.i - 1)
+                self.theta.append(theta1)
+
+            # after attack
+            if exp.model.cur_index == exp.attack_start_index + attack_duration:
+                exp.model.reset()
+                self.attack_rise_alarm = False
+                break
+
+    def boundToTheta(self, x_prime, bound, x_hat):
+        theta = np.zeros([len(bound), 2])
+        # each dimension
+        for i in range(len(bound)):
+            low = x_prime[i] + bound[i][0]
+            up = x_prime[i] + bound[i][1]
+            theta[i][0] = low - x_hat[i]
+            theta[i][1] = up - x_hat[i]
+        return theta
+
+    def boundByDetector(self, t):
+        for i in range(self.detector.m):
+            self.pOrN[i] = self.residuals[t][i] < 0 and -1 or 1
+        rsum = np.zeros(self.detector.m)
+        # for i in range(t):
+        if len(self.residuals) >= self.detector.w:
+            for i in range(self.detector.w):
+                rsum += abs(self.residuals[t - i])
+        else:
+            for i in range(len(self.residuals)):
+                rsum += abs(self.residuals[t - i])
+
+        theta1 = np.zeros([self.detector.m, 2])
+
+        for i in range(len(self.pOrN)):
+            A_theta_lo = 0
+            A_theta_up = 0
+            for j in range(self.A.shape[0]):
+                if self.A[i][j] >=0:
+                    A_theta_lo += self.A[i][j] * self.theta[t - 1][j][0]
+                    A_theta_up += self.A[i][j] * self.theta[t - 1][j][1]
+                else:
+                    A_theta_lo += self.A[i][j] * self.theta[t - 1][j][1]
+                    A_theta_up += self.A[i][j] * self.theta[t - 1][j][0]
+            if self.pOrN[i] > 0:
+                theta1[i][0] = (-self.x_hat[t] - self.A @ self.x_tilda[t - 1] + self.A @ self.x_hat[t - 1] - 0.001 + self.x_tilda[t])[i] + A_theta_lo
+                theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.x_hat[t - 1] - self.x_tilda[t - 1]) + 0.001)[i] + A_theta_up
             else:
-                justAuth = justAuth + 1
+                theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.x_tilda[t - 1] + self.A @ self.x_hat[t - 1] - 0.001)[i] + A_theta_lo
+                theta1[i][1] = (-self.x_hat[t] - self.A @ self.x_tilda[t - 1] + self.A @ self.x_hat[t - 1] + 0.001 + self.x_tilda[t])[i] + A_theta_up
+        return theta1

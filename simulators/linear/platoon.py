@@ -25,6 +25,8 @@ x_0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 # control parameters
 R = np.eye(4) * 5
 Q = np.eye(7) * 10000
+# R = np.eye(4) * 15
+# Q = np.eye(7) * 20000
 
 control_limit = {
     'lo': np.array([-5]),
@@ -81,6 +83,7 @@ class Platoon(Simulator):
         }
         if noise:
             settings['noise'] = noise
+        settings['init_state'] = [0.98335375,1.00585546,0.9830338,0.98461937,0.98400174,0.9836474,0.99257253]
         self.sim_init(settings)
 
     def __del__(self):
@@ -89,20 +92,20 @@ class Platoon(Simulator):
 
 
 if __name__ == "__main__":
-    max_index = 800
+    max_index = 400
     dt = 0.04
     ref = [np.array([1])] * 301 + [np.array([1])] * 500
     noise = {
         'process': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.002,
-                      'up': np.ones(7) * 0.002}
+            'param': {'lo': np.ones(7) * -0.00,
+                      'up': np.ones(7) * 0.00}
+        },
+        'measurement': {
+            'type': 'box_uniform',
+            'param': {'lo': np.ones(7) * -0.001,
+                      'up': np.ones(7) * 0.001}
         }
-        # 'measurement': {
-        #     'type': 'box_uniform',
-        #     'param': {'lo': np.ones(7) * -0.002,
-        #               'up': np.ones(7) * 0.002}
-        # }
     }
     platoon = Platoon('test', dt, max_index, noise)
     for i in range(0, max_index + 1):
@@ -110,9 +113,11 @@ if __name__ == "__main__":
         platoon.update_current_ref(ref[i])
         # attack here
         platoon.evolve()
+        if i == 200:
+            print(platoon.cur_x)
     # print results
-    print("#############")
-    print(platoon.sysd.A)
+
+
     import matplotlib.pyplot as plt
 
     # t_arr = np.linspace(0, 10, max_index + 1)

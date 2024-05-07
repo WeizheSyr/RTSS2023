@@ -6,7 +6,7 @@ import time
 
 
 class Authenticate:
-    def __init__(self, exp, n, p=0.002, inf=0.5):
+    def __init__(self, exp, n, p=0.001, inf=10):
         self.u = None
         self.y = None
         self.INF = inf
@@ -58,8 +58,8 @@ class Authenticate:
                 U[i] = self.B @ self.u[i - 1] + self.A @ U[i - 1]
         return U
 
-    def getInputs(self, inpu):
-        self.u = inpu
+    def getInputs(self, input):
+        self.u = input
 
     def getFeedbacks(self, feed):
         self.y = feed
@@ -98,21 +98,19 @@ class Authenticate:
         ]
         problem = cp.Problem(cp.Minimize(obj), constraints)
         problem.solve(solver=cp.SCIPY)
-        # end = time.time()
-        # print(end - start)
-        # start = time.time()
-        # problem.solve(solver=cp.SCIPY)
-        # end = time.time()
-        # print(end - start)
 
         # print('x.value', x.value)
         for i in range(self.m):
-            self.x[i] = x.value[i]
+            if x.value is not None:
+                self.x[i] = x.value[i]
+            else:
+                return 0
         for i in range(self.m):
             self.gama[i] = gama.value[i]
         for i in range(self.timestep):
             for j in range(self.m):
                 self.E[i][j] = E.value[i][j]
+        return 1
 
     def getBound(self, dim=0, att=0):
         x1 = cp.Variable([self.m], name="x1")
@@ -127,8 +125,11 @@ class Authenticate:
         for i in range(self.timestep):
             temp1[i] = self.A_k[i] @ self.x
 
+        # constraints1 = [
+        #     cp.sum(beta) <= 1
+        # ]
         constraints1 = [
-            cp.sum(beta) <= 1
+            cp.sum(beta) <= cp.sum(self.gama)
         ]
         constraints1 += [
             (self.y[k] - self.U[k] - (self.A_k[k] @ x1) - E1[k] <= self.delta[k]) for k in range(self.timestep)

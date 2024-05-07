@@ -86,8 +86,8 @@ class Platoon:
         },
         'measurement': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.002,
-                      'up': np.ones(7) * 0.002}
+            'param': {'lo': np.ones(7) * -0.001,
+                      'up': np.ones(7) * 0.001}
         }
     }
     model = Platoon('test', dt, max_index, noise)

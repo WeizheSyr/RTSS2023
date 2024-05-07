@@ -11,13 +11,16 @@ B = [[0.232], [0.0203], [0]]
 C = [[0, 0, 1]]
 D = [[0]]
 
-# x_0 = np.array([0.0, 0.0, 0.0])
-x_0 = np.array([ 0.06278011, -0.00016815,  0.1694274 ])
+x_0 = np.array([0.0, 0.0, 0.0])
+# x_0 = np.array([ 0.06278011, -0.00016815,  0.1694274 ])
 
 # control parameters
-KP = 1.13
-KI = 0.0253
-KD = 0.0
+# KP = 1.13
+# KI = 0.0253
+# KD = 0.0
+KP = 6
+KI = 0.014
+KD = 0.000
 control_limit = {'lo': [-20], 'up': [20]}
 
 class Controller:
@@ -71,12 +74,12 @@ class AircraftPitch(Simulator):
 
 if __name__ == "__main__":
     max_index = 1500
-    dt = 0.02
+    dt = 0.04
     ref = [np.array([0.2])] * 1501
     noise = {
         'process': {
             'type': 'white',
-            'param': {'C': np.eye(3) * 0.0001}
+            'param': {'C': np.eye(3) * 0.00002}
         }
     }
     aircraft_pitch = AircraftPitch('test', dt, max_index, noise)
