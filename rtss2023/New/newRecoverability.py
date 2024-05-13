@@ -90,12 +90,16 @@ class Reachability:
         self.L_up = []
         self.D_lo = []
         self.D_up = []
+        self.cloest = []
+        self.intersect = []
+        self.empty = []
         for i in range(self.max_step):
             self.L_lo.append(self.A_i[i] @ x_hat + self.A_i[i] @ theta_lo + self.Aip_lo[i])
             self.L_up.append(self.A_i[i] @ x_hat + self.A_i[i] @ theta_up + self.Aip_up[i])
 
             # check ddl
             if not self.inBox(self.L_lo[-1], self.L_up[-1], self.s_lo, self.s_up):
+                self.ddl = i - 1
                 break
 
             # check recoverability
@@ -104,17 +108,43 @@ class Reachability:
 
             # check D empty
             if not self.check_empty(self.D_lo[-1], self.D_up[-1]):
-                closest, intersect, iteration = self.check_intersection(self.E[i], self.D_lo[-1], self.D_up[-1])
-                self.ddl = i
-
+                closest, intersect = self.check_intersection(self.E[i], self.D_lo[-1], self.D_up[-1])
+                self.cloest.append(closest)
+                self.intersect.append(intersect)
+                self.empty.append(0)
+            else:
+                # D is empty, no need to check more
+                self.empty.append(1)
+                return len(self.intersect)
+        return len(self.intersect)
 
     def check_intersection(self, E: Zonotope, D_lo, D_up):
         ord = E.g.shape[1]
-        intersectCase = 1
+        stop = 1
+        flag = 0
 
-        adjustDir = self.emptySet
+        center = (D_up + D_lo) / 2
+        start = E.c
+        dir = np.zeros(ord)
+        for i in range(ord):
+            move = 0
+            t = self.get_t(center - start, E.g[:, i])
+            if t + dir[i] >= 1:
+                move = 1 - dir[i]
+            elif t + dir[i] <= 1:
+                move = -1 - dir[i]
+            else:
+                move = t
+            if not self.newEqual(move, 0):
+                stop = 0
+            start = start + move * E.g[:, i]
+            if self.point_in_box(start, D_lo, D_up):
+                flag = 1
 
-        return closest, intersect, iteration
+            if i == ord - 1 and stop == 0:
+                i = 0
+                stop = 1
+        return start, flag
 
     # check first box in second box, 0 not in, 1 in
     def inBox(self, first_lo, first_up, second_lo, second_up):
@@ -123,8 +153,26 @@ class Reachability:
                 return 0
         return 1
 
+    def point_in_box(self, point, box_lo, box_up):
+        for i in range(point.shape):
+            if not box_lo[i] <= point <= box_up[i]:
+                return 0
+        return 1
+
     def check_empty(self, D_lo, D_up):
         for i in range(self.A.shape[0]):
             if D_lo[i] > D_up[i]:
                 return 0
         return 1
+
+    def get_t(self, a, b):
+        # a is E*
+        # b is generator
+        t = np.dot(a, b) / np.dot(b, b)
+        return t
+
+    def newEqual(self, a, b):
+        if -0.001 < a - b < 0.001:
+            return 1
+        else:
+            return 0
