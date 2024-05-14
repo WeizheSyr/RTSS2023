@@ -2,7 +2,7 @@ import numpy as np
 from utils.formal.zonotope import Zonotope
 import time
 
-class Reachability:
+class Reachability1:
     def __init__(self, A, B, U: Zonotope, v_lo, v_up, target_lo, target_up, safe_lo, safe_up, max_step=20):
         self.A = A
         self.B = B
@@ -15,18 +15,23 @@ class Reachability:
         self.s_up = safe_up
         self.max_step = max_step
 
+        # l for support function
+        self.l = np.eye(A.shape[0])
+
         # A^i
         self.A_i = [np.eye(A.shape[0])]
         for i in range(max_step):
             self.A_i.append(A @ self.A_i[-1])
+
         # A^i BU
         self.A_i_B_U = [val @ B @ U for val in self.A_i]
-        # l for support function
-        self.l = np.eye(A.shape[0])
 
         # E
         self.E = self.reach_E()
         self.E_lo, self.E_up = self.bound_E()
+
+        # A^d \hat{x}_t + A^{d-1} Bu_t
+        self.L1 = []
 
         # A^i p
         self.Aip_up, self.Aip_lo = self.bound_Aiv()
@@ -71,6 +76,7 @@ class Reachability:
                 up.append(up[i - 1] + self.A_i[i] @ self.v_up)
         return lo, up
 
+    # minkowski difference between box and zonotope
     def minkowski_dif1(self, first_lo, first_up, second: Zonotope):
         lo = np.zeros(self.A.shape[0])
         up = np.zeros(self.A.shape[0])
@@ -79,10 +85,12 @@ class Reachability:
             up[i] = first_up[i] - second.support(self.l[i])
         return lo, up
 
+    # minkowski difference between box and box
     def minkowski_dif(self, first_lo, first_up, second_lo, second_up):
         return first_lo - second_lo, first_up - second_up
 
-    def recoverability(self, x_hat, theta):
+    # j = 1
+    def recoverability1(self, x_hat, theta, ut):
         theta_lo = np.array(theta)[:, 0]
         theta_up = np.array(theta)[:, 1]
 
@@ -93,13 +101,13 @@ class Reachability:
         self.cloest = []
         self.intersect = []
         self.empty = []
-        for i in range(self.max_step):
-            self.L_lo.append(self.A_i[i] @ x_hat + self.A_i[i] @ theta_lo + self.Aip_lo[i])
-            self.L_up.append(self.A_i[i] @ x_hat + self.A_i[i] @ theta_up + self.Aip_up[i])
-
+        for i in range(1, self.max_step):
+            self.L_lo.append(self.A_i[i] @ x_hat + self.A_i[i] @ theta_lo + self.Aip_lo[i-1] + self.A_i[i-1] @ self.B @ ut)
+            self.L_up.append(self.A_i[i] @ x_hat + self.A_i[i] @ theta_up + self.Aip_up[i-1] + self.A_i[i-1] @ self.B @ ut)
             # check ddl
             if not self.inBox(self.L_lo[-1], self.L_up[-1], self.s_lo, self.s_up):
                 self.ddl = i - 1
+                print("ddl", self.ddl)
                 break
 
             # check recoverability
@@ -107,7 +115,8 @@ class Reachability:
             self.D_up.append(self.t_up - self.L_up[-1])
 
             # check D empty
-            if not self.check_empty(self.D_lo[-1], self.D_up[-1]):
+            if self.check_empty(self.D_lo[-1], self.D_up[-1]):
+                # check intersection between D and E
                 closest, intersect = self.check_intersection(self.E[i], self.D_lo[-1], self.D_up[-1])
                 self.cloest.append(closest)
                 self.intersect.append(intersect)
@@ -126,12 +135,14 @@ class Reachability:
         center = (D_up + D_lo) / 2
         start = E.c
         dir = np.zeros(ord)
-        for i in range(ord):
+        iteration = 0
+        i = 0
+        while i < ord:
             move = 0
             t = self.get_t(center - start, E.g[:, i])
             if t + dir[i] >= 1:
                 move = 1 - dir[i]
-            elif t + dir[i] <= 1:
+            elif t + dir[i] <= -1:
                 move = -1 - dir[i]
             else:
                 move = t
@@ -142,8 +153,10 @@ class Reachability:
                 flag = 1
 
             if i == ord - 1 and stop == 0:
-                i = 0
+                iteration = iteration + 1
+                i = -1
                 stop = 1
+            i = i + 1
         return start, flag
 
     # check first box in second box, 0 not in, 1 in
@@ -154,8 +167,8 @@ class Reachability:
         return 1
 
     def point_in_box(self, point, box_lo, box_up):
-        for i in range(point.shape):
-            if not box_lo[i] <= point <= box_up[i]:
+        for i in range(self.A.shape[0]):
+            if box_lo[i] > point[i] or box_up[i] < point[i]:
                 return 0
         return 1
 

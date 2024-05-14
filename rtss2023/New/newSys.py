@@ -1,6 +1,6 @@
 import numpy as np
 from rtss2023.Authenticate import Authenticate
-from rtss2023.reachability import Reachability
+from newRecoverability import Reachability1
 from utils.formal.zonotope import Zonotope
 from copy import deepcopy
 
@@ -38,12 +38,16 @@ class Sys:
 
         # recoverability
         self.pz = Zonotope.from_box(np.ones(7) * -0.001, np.ones(7) * 0.001)    # noise
+        self.p_low = np.ones(7) * -0.001
+        self.p_up = np.ones(7) * 0.001
         self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)            # control box
         self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
         self.target_up = np.array([1.2, 1.2, 1.2, 0.4, 0.4, 0.4, 0.4])
+        self.safe_low = np.array([0, 0, 0, -5, -5, -5, -5])
+        self.safe_up = np.array([2, 2, 2, 5, 5, 5, 5])
         self.klevel = 3
         self.klevels = []
-        self.reach = Reachability(self.A, self.B, self.pz, self.uz, self.target_low, self.target_up)
+        self.reach = Reachability1(self.A, self.B, self.uz, self.p_low, self.p_up, self.target_low, self.target_up, self.safe_low, self.safe_up)
         self.originalK = []
 
         # detector
@@ -56,7 +60,13 @@ class Sys:
 
             # recoverability calculator
             if self.i >= 30:
+                thetaz = np.array(self.theta)
+                recover = self.reach.recoverability1(self.x_hat[-1], thetaz[-1, :, ], exp.model.cur_u)
+                print("recoverability", recover)
 
+                # else:
+                #     # adjust threshold
+                #     new_tau = self.reach.adjust_threshold()
 
 
 
