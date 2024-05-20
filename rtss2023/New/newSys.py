@@ -1,6 +1,6 @@
 import numpy as np
 from rtss2023.Authenticate import Authenticate
-from newRecoverability import Reachability1
+from newRecoverability import Reachability
 from utils.formal.zonotope import Zonotope
 from copy import deepcopy
 
@@ -47,7 +47,7 @@ class Sys:
         self.safe_up = np.array([2, 2, 2, 5, 5, 5, 5])
         self.klevel = 3
         self.klevels = []
-        self.reach = Reachability1(self.A, self.B, self.uz, self.p_low, self.p_up, self.target_low, self.target_up, self.safe_low, self.safe_up)
+        self.reach = Reachability(self.A, self.B, self.uz, self.p_low, self.p_up, self.target_low, self.target_up, self.safe_low, self.safe_up)
         self.originalK = []
 
         # detector
@@ -57,18 +57,6 @@ class Sys:
             first = 0
             exp.model.update_current_ref(exp.ref[self.i])
             exp.model.evolve()
-
-            # recoverability calculator
-            if self.i >= 30:
-                thetaz = np.array(self.theta)
-                recover = self.reach.recoverability1(self.x_hat[-1], thetaz[-1, :, ], exp.model.cur_u)
-                print("recoverability", recover)
-
-                # else:
-                #     # adjust threshold
-                #     new_tau = self.reach.adjust_threshold()
-
-
 
             self.i += 1
             self.index_list.append(exp.model.cur_index)
@@ -95,7 +83,7 @@ class Sys:
             if alarm:
                 print("alarm at", exp.model.cur_index)
                 return
-            if self.i >= 100:
+            if self.i >= 50:
                 return
 
             # authentication
@@ -107,7 +95,7 @@ class Sys:
 
             self.auth_step += 1
             # if self.auth_step == self.auth.timestep:
-            if self.auth_step >= 3 and len(self.auth_input) == self.auth.timestep:
+            if self.auth_step >= 7 and len(self.auth_input) == self.auth.timestep:
                 print("auth at ", self.i)
                 self.auth_step = 0
                 authQueueInput1 = self.auth_input[::-1]
@@ -133,19 +121,26 @@ class Sys:
                     self.theta[self.authT[-1]] = t
 
                 # update real state calculate
-                for k in range(self.auth.timestep - 2):
-                    theta1 = self.boundByDetector(self.authT[-1] + 1 + k)
-                    # first time authentication
-                    if len(self.authT) == 1:
-                        self.theta.append(theta1)
-                    # Rewrite previous theta
-                    else:
-                        self.theta[self.authT[-1] + 1 + k] = theta1
+                if self.i < 50:
+                    for k in range(self.auth.timestep - 2):
+                        theta1 = self.boundByDetector(self.authT[-1] + 1 + k)
+                        # first time authentication
+                        if len(self.authT) == 1:
+                            self.theta.append(theta1)
+                        # Rewrite previous theta
+                        else:
+                            self.theta[self.authT[-1] + 1 + k] = theta1
 
             # error estimator
             if len(self.authT) != 0:
                 theta1 = self.boundByDetector(self.i - 1)
                 self.theta.append(theta1)
+
+            # recoverability calculator
+            if self.i >= 30:
+                thetaz = np.array(self.theta)
+                recover = self.reach.recoverable(self.x_hat[-1], thetaz[-1, :, ])
+                print("recoverability", recover)
 
             # after attack
             if exp.model.cur_index == exp.attack_start_index + attack_duration:
