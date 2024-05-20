@@ -43,8 +43,12 @@ class Sys:
         self.uz = Zonotope.from_box(np.ones(4) * -5, np.ones(4) * 5)            # control box
         self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
         self.target_up = np.array([1.2, 1.2, 1.2, 0.4, 0.4, 0.4, 0.4])
-        self.safe_low = np.array([0, 0, 0, -5, -5, -5, -5])
-        self.safe_up = np.array([2, 2, 2, 5, 5, 5, 5])
+
+        self.target_low = np.array([0.4, 0.4, 0.4, -1, -1, -1, -1])
+        self.target_up = np.array([1.2, 1.2, 1.2, 1, 1, 1, 1])
+
+        self.safe_low = np.array([0, 0, 0, -3, -3, -3, -3])
+        self.safe_up = np.array([2, 2, 2, 3, 3, 3, 3])
         self.klevel = 3
         self.klevels = []
         self.reach = Reachability(self.A, self.B, self.uz, self.p_low, self.p_up, self.target_low, self.target_up, self.safe_low, self.safe_up)
@@ -188,4 +192,18 @@ class Sys:
             else:
                 theta1[i][0] = (-self.detector.tao + rsum - self.A @ self.x_tilda[t - 1] + self.A @ self.x_hat[t - 1] - 0.001)[i] + A_theta_lo
                 theta1[i][1] = (-self.x_hat[t] - self.A @ self.x_tilda[t - 1] + self.A @ self.x_hat[t - 1] + 0.001 + self.x_tilda[t])[i] + A_theta_up
+        return theta1
+
+    def boundByDetector1(self, t):
+        rsum = np.zeros(self.detector.m)
+        if len(self.residuals) >= self.detector.w:
+            for i in range(1, self.detector.w):
+                rsum += abs(self.residuals[t - i])
+        else:
+            for i in range(1, len(self.residuals)):
+                rsum += abs(self.residuals[t - i])
+
+        theta1 = np.zeros([self.detector.m, 2])
+        theta1[:, 0] = - self.detector.tao + rsum - (self.x_hat[t] - self.x_tilda[t]) + self.A @ (self.x_hat[t-1] - self.x_tilda[t-1]) - 0.001
+        theta1[:, 1] = self.detector.tao - rsum - (self.x_hat[t] - self.x_tilda[t]) + self.A @ (self.x_hat[t-1] - self.x_tilda[t-1]) + 0.001
         return theta1

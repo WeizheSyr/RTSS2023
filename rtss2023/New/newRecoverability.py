@@ -48,6 +48,16 @@ class Reachability:
         self.intersect = [[], [], []]
         self.empty = [[],[],[]]
 
+        self.k = 3
+
+    def get_bound(self, X: Zonotope):
+        lo = []
+        up = []
+        for i in range(self.A.shape[0]):
+            lo.append(X.support(self.l[i], -1))
+            up.append(X.support(self.l[i]))
+        return lo, up
+
     def reach_E(self):
         E = []
         for i in range(self.max_step):
@@ -109,7 +119,7 @@ class Reachability:
         return first_lo - second_lo, first_up - second_up
 
     def deadline(self, x_hat, theta_lo, theta_up):
-        self.L_lo = [[], [], []]
+        self.L_lo = [[] for i in range(self.k)]
         self.L_up = [[], [], []]
         self.D_lo = [[], [], []]
         self.D_up = [[], [], []]
@@ -122,9 +132,9 @@ class Reachability:
                 # sum_{i=1}^{j} A^{j+d-i} BU
                 A_B_U_lo = np.zeros(self.A.shape[0])
                 A_B_U_up = np.zeros(self.A.shape[0])
-                for k in range(j):
-                    A_B_U_lo = A_B_U_lo + self.A_i_B_U_lo[j + d - k - 1]
-                    A_B_U_up = A_B_U_up + self.A_i_B_U_up[j + d - k - 1]
+                for i in range(j):
+                    A_B_U_lo = A_B_U_lo + self.A_i_B_U_lo[j + d - i - 1]
+                    A_B_U_up = A_B_U_up + self.A_i_B_U_up[j + d - i - 1]
 
                 L_lo = self.A_i[j + d] @ (x_hat + theta_lo) + A_B_U_lo + self.Aip_lo[j + d - 1]
                 L_up = self.A_i[j + d] @ (x_hat + theta_up) + A_B_U_up + self.Aip_up[j + d - 1]
@@ -134,7 +144,7 @@ class Reachability:
                     self.D_lo[j - 1].append(self.t_lo - L_lo)
                     self.D_up[j - 1].append(self.t_up - L_up)
                 else:
-                    print("ddl", j, d)
+                    print('unsafe')
                     break
 
     def recoverable(self, x_hat, theta):
@@ -142,24 +152,47 @@ class Reachability:
         theta_up = np.array(theta)[:, 1]
         self.deadline(x_hat, theta_lo, theta_up)
         # j = 1 check recoverability
-        flag = 0
-        for i in range(len(self.L_up[0])):
-            # check empty
-            if self.check_empty(self.D_lo[0][i], self.D_up[0][i]):
-                # print(i)
-                # print(self.D_lo[0][-1])
-                # print(self.D_up[0][-1])
-                closest, alpha, intersect = self.check_intersection(self.E[i], self.D_lo[0][i], self.D_up[0][i])
-                self.cloest[0].append(closest)
-                self.alpha[0].append(alpha)
-                self.intersect[0].append(intersect)
-                self.empty[0].append(0)
-                if intersect == 1:
-                    flag = flag + 1
-            else:
-                self.empty[0].append(1)
 
-        return flag
+        # flag = 0
+        # for i in range(len(self.L_up[0])):
+        #     # check empty
+        #     if self.check_empty(self.D_lo[0][i], self.D_up[0][i]):
+        #         closest, alpha, intersect = self.check_intersection(self.E[i], self.D_lo[0][i], self.D_up[0][i])
+        #         self.cloest[0].append(closest)
+        #         self.alpha[0].append(alpha)
+        #         self.intersect[0].append(intersect)
+        #         self.empty[0].append(0)
+        #         if intersect == 1:
+        #             flag = flag + 1
+        #     else:
+        #         self.empty[0].append(1)
+
+        self.flag = [0, 0, 0]
+        for j in range(3):
+            for i in range(len(self.L_up[j])):
+                # check empty
+                if self.check_empty(self.D_lo[j][i], self.D_up[j][i]):
+                    closest, alpha, intersect = self.check_intersection(self.E[i], self.D_lo[j][i], self.D_up[j][i])
+                    self.cloest[j].append(closest)
+                    self.alpha[j].append(alpha)
+                    self.intersect[j].append(intersect)
+                    self.empty[j].append(0)
+                    if intersect == 1:
+                        self.flag[j] = self.flag[j] + 1
+                else:
+                    self.empty[j].append(1)
+        return self.flag
+
+    # def threshold_adjuster(self, pOrN):
+    #     # increase recoverable time window
+    #     if self.flag[2] == 0:
+    #         # check empty
+    #
+    #     # decrease recoverable time window
+    #     else:
+
+
+
 
     # j = 1
     # def recoverability1(self, x_hat, theta):
