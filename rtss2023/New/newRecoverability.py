@@ -158,6 +158,7 @@ class Reachability:
                     flag = flag + 1
             else:
                 self.empty[0].append(1)
+
         return flag
 
     # j = 1
