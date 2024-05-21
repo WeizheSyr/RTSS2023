@@ -3,10 +3,11 @@ from utils.formal.zonotope import Zonotope
 import time
 
 class Reachability:
-    def __init__(self, A, B, U: Zonotope, v_lo, v_up, target_lo, target_up, safe_lo, safe_up, max_step=20):
+    def __init__(self, A, B, U: Zonotope, P: Zonotope, v_lo, v_up, target_lo, target_up, safe_lo, safe_up, max_step=20):
         self.A = A
         self.B = B
         self.U = U
+        self.P = P
         self.v_lo = v_lo
         self.v_up = v_up
         self.t_lo = target_lo
@@ -22,6 +23,7 @@ class Reachability:
         self.A_i = [np.eye(A.shape[0])]
         for i in range(max_step):
             self.A_i.append(A @ self.A_i[-1])
+        self.abs_A_i = np.abs(self.A_i)
 
         # A^i BU
         self.A_i_B_U = [val @ B @ U for val in self.A_i]
@@ -35,7 +37,8 @@ class Reachability:
         self.L1 = []
 
         # A^i p
-        self.Aip_lo, self.Aip_up = self.bound_Aiv()
+        self.AiP = [val @ self.P for val in self.A_i]
+        self.Aip_lo, self.Aip_up = self.bound_AiP()
 
         self.ddl = self.max_step
         self.L_lo = [[],[],[]]
@@ -93,17 +96,14 @@ class Reachability:
             A_i_B_U_up.append(up)
         return A_i_B_U_lo, A_i_B_U_up
 
-    def bound_Aiv(self):
-        lo = []
-        up = []
+    def bound_AiP(self):
+        los = []
+        ups = []
         for i in range(self.max_step):
-            if i == 0:
-                lo.append(self.v_lo)
-                up.append(self.v_up)
-            else:
-                lo.append(lo[i - 1] + self.A_i[i] @ self.v_lo)
-                up.append(up[i - 1] + self.A_i[i] @ self.v_up)
-        return lo, up
+            lo, up = self.get_bound(self.AiP[i])
+            los.append(lo)
+            ups.append(up)
+        return los, ups
 
     # minkowski difference between box and zonotope
     def minkowski_dif1(self, first_lo, first_up, second: Zonotope):
@@ -118,7 +118,7 @@ class Reachability:
     def minkowski_dif(self, first_lo, first_up, second_lo, second_up):
         return first_lo - second_lo, first_up - second_up
 
-    def deadline(self, x_hat, theta_lo, theta_up):
+    def deadline(self, x_hat, thetaz):
         self.L_lo = [[] for i in range(self.k)]
         self.L_up = [[], [], []]
         self.D_lo = [[], [], []]
@@ -136,8 +136,9 @@ class Reachability:
                     A_B_U_lo = A_B_U_lo + self.A_i_B_U_lo[j + d - i - 1]
                     A_B_U_up = A_B_U_up + self.A_i_B_U_up[j + d - i - 1]
 
-                L_lo = self.A_i[j + d] @ (x_hat + theta_lo) + A_B_U_lo + self.Aip_lo[j + d - 1]
-                L_up = self.A_i[j + d] @ (x_hat + theta_up) + A_B_U_up + self.Aip_up[j + d - 1]
+                theta_lo, theta_up = self.get_bound(self.A_i[j + d] @ thetaz)
+                L_lo = self.A_i[j + d] @ x_hat + theta_lo + A_B_U_lo + self.Aip_lo[j + d - 1]
+                L_up = self.A_i[j + d] @ x_hat + theta_up + A_B_U_up + self.Aip_up[j + d - 1]
                 if self.inBox(L_lo, L_up, self.s_lo, self.s_up):
                     self.L_lo[j - 1].append(L_lo)
                     self.L_up[j - 1].append(L_up)
@@ -150,7 +151,8 @@ class Reachability:
     def recoverable(self, x_hat, theta):
         theta_lo = np.array(theta)[:, 0]
         theta_up = np.array(theta)[:, 1]
-        self.deadline(x_hat, theta_lo, theta_up)
+        thetaz = Zonotope.from_box(theta_lo, theta_up)
+        self.deadline(x_hat, thetaz)
         # j = 1 check recoverability
 
         # flag = 0
@@ -180,19 +182,47 @@ class Reachability:
                     if intersect == 1:
                         self.flag[j] = self.flag[j] + 1
                 else:
+                    closest, alpha, intersect = self.check_intersection(self.E[i], self.D_lo[j][i], self.D_up[j][i])
+                    self.cloest[j].append(closest)
+                    self.alpha[j].append(alpha)
+                    self.intersect[j].append(0)
                     self.empty[j].append(1)
         return self.flag
 
-    # def threshold_adjuster(self, pOrN):
-    #     # increase recoverable time window
-    #     if self.flag[2] == 0:
-    #         # check empty
-    #
-    #     # decrease recoverable time window
-    #     else:
+    def threshold_decrease(self):
+        # increase recoverable time window
+        j = 1
+        delta_tau = np.ones(self.A.shape[0]) * 0.0005
+        stop = 0
+        while(True):
+            for i in range(len(self.L_up[j])):
+                self.D_lo[j][i] = self.D_lo[j][i] - self.abs_A_i[j + i] @ delta_tau
+                self.D_up[j][i] = self.D_up[j][i] + self.abs_A_i[j + i] @ delta_tau
+                if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
+                    stop = 1
+                    break
+            if stop == 1:
+                break
+            else:
+                delta_tau = delta_tau + 0.0005
+        return delta_tau
 
-
-
+    def threshold_increase(self):
+        j = 2
+        delta_tau = np.ones(self.A.shape[0]) * 0.0005
+        stop = 1
+        while(True):
+            # for i in range(len(self.L_up[j])):
+            for i in range(np.sum(self.empty[j])):
+                self.D_lo[j][i] = self.D_lo[j][i] + self.abs_A_i[j + i] @ delta_tau
+                self.D_up[j][i] = self.D_up[j][i] - self.abs_A_i[j + i] @ delta_tau
+                if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
+                    stop = 0
+            if stop == 1:
+                break
+            else:
+                delta_tau = delta_tau + 0.0005
+        return delta_tau
 
     # j = 1
     # def recoverability1(self, x_hat, theta):

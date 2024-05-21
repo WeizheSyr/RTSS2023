@@ -1,68 +1,79 @@
 from newSys import Sys
 from utils.Baseline import Platoon
 from utils.detector.windowBased import window
+from utils.detector.cusum1 import cusum
 import matplotlib.pyplot as plt
 import numpy as np
 
-tao = np.ones(7) * 0.012
-# tao = np.ones(7) * 0.02
-# tao = [0.5] * 7
+tao = np.ones(7) * 0.020
 detector = window(tao, 7, 10)
+tao1 = np.ones(7) * 0.020
+detector1 = window(tao1, 7, 10)
+cusum = cusum(tao1, 7, 10)
 exp = Platoon
-attack = [np.array([0.00])] * 30
+attack = [np.array([0.01])] * 30
 attack_duration = 30
-# attack = np.zeros(attack_duration)
+# attack = np.zeros(attack_duration
 # for i in range(attack_duration):
 #     attack[i] = 0.005 * i
 
-sys = Sys(detector=detector, exp=exp, attack=attack, attack_duration=attack_duration)
+sys = Sys(detector=detector, detector1=detector1, cusum=cusum ,exp=exp, attack=attack, attack_duration=attack_duration)
 
 max_index = sys.i
-# print("max_index: ", max_index)
-x_hat_arr = [x[0] for x in sys.x_hat]
-x_tilda_arr = [x[0] for x in sys.x_tilda]
-x_low = []
-x_up = []
-for i in range(len(x_hat_arr) - 1):
-    x_low.append(x_hat_arr[i] + sys.theta[i][0][0])
-    x_up.append(x_hat_arr[i] + sys.theta[i][0][1])
-tao_arr0 = [x[0] for x in sys.taus]
-tao_arr1 = [x[1] for x in sys.taus]
-tao_arr2 = [x[2] for x in sys.taus]
-tao_arr3 = [x[3] for x in sys.taus]
-tao_arr4 = [x[4] for x in sys.taus]
-tao_arr5 = [x[5] for x in sys.taus]
-
-# print(sys.theta[:, 0, 0])
-# print(sys.theta[:, 0, 1])
-# print(sys.taos)
-
-reach = [x for x in sys.klevels]
+x_arr = [x[0] for x in sys.x]
+# np.save("data/1/x", sys.x)
 
 plt.figure()
-plt.subplot(4, 2, 1)
-plt.plot(x_low, c='red', linestyle=':', label='x_low')
-plt.plot(x_up, c='red', linestyle=':', label='x_up')
-plt.plot(x_tilda_arr, c='blue', linestyle=':', label='x_tilda_arr')
-
-plt.subplot(4, 2, 2)
-plt.plot(reach[0:-1], c='blue', linestyle=':', label='x_tilda_arr')
-
-plt.subplot(4, 2, 3)
-plt.plot(tao_arr0, c='blue', linestyle=':', label='tao')
-
-plt.subplot(4, 2, 4)
-plt.plot(tao_arr1, c='blue', linestyle=':', label='tao')
-
-plt.subplot(4, 2, 5)
-plt.plot(tao_arr2, c='blue', linestyle=':', label='tao')
-
-plt.subplot(4, 2, 6)
-plt.plot(tao_arr3, c='blue', linestyle=':', label='tao')
-
-plt.subplot(4, 2, 7)
-plt.plot(tao_arr4, c='blue', linestyle=':', label='tao')
-
-plt.subplot(4, 2, 8)
-plt.plot(tao_arr5, c='blue', linestyle=':', label='tao')
+plt.plot(x_arr, c='blue', linestyle=':', label='x')
+# plt.plot((sys.x[sys.alarm1st][0], sys.alarm1st), 'o', color='black')
+# plt.plot((sys.x[sys.alarm1st1][0], sys.alarm1st1), 'v', color='yellow')
 plt.show()
+# max_index = sys.i
+# # print("max_index: ", max_index)
+# x_hat_arr = [x[0] for x in sys.x_hat]
+# x_tilda_arr = [x[0] for x in sys.x_tilda]
+# x_low = []
+# x_up = []
+# for i in range(len(x_hat_arr) - 1):
+#     x_low.append(x_hat_arr[i] + sys.theta[i][0][0])
+#     x_up.append(x_hat_arr[i] + sys.theta[i][0][1])
+# tao_arr0 = [x[0] for x in sys.taus]
+# tao_arr1 = [x[1] for x in sys.taus]
+# tao_arr2 = [x[2] for x in sys.taus]
+# tao_arr3 = [x[3] for x in sys.taus]
+# tao_arr4 = [x[4] for x in sys.taus]
+# tao_arr5 = [x[5] for x in sys.taus]
+#
+# # print(sys.theta[:, 0, 0])
+# # print(sys.theta[:, 0, 1])
+# # print(sys.taos)
+#
+# reach = [x for x in sys.klevels]
+#
+# plt.figure()
+# plt.subplot(4, 2, 1)
+# plt.plot(x_low, c='red', linestyle=':', label='x_low')
+# plt.plot(x_up, c='red', linestyle=':', label='x_up')
+# plt.plot(x_tilda_arr, c='blue', linestyle=':', label='x_tilda_arr')
+#
+# plt.subplot(4, 2, 2)
+# plt.plot(reach[0:-1], c='blue', linestyle=':', label='x_tilda_arr')
+#
+# plt.subplot(4, 2, 3)
+# plt.plot(tao_arr0, c='blue', linestyle=':', label='tao')
+#
+# plt.subplot(4, 2, 4)
+# plt.plot(tao_arr1, c='blue', linestyle=':', label='tao')
+#
+# plt.subplot(4, 2, 5)
+# plt.plot(tao_arr2, c='blue', linestyle=':', label='tao')
+#
+# plt.subplot(4, 2, 6)
+# plt.plot(tao_arr3, c='blue', linestyle=':', label='tao')
+#
+# plt.subplot(4, 2, 7)
+# plt.plot(tao_arr4, c='blue', linestyle=':', label='tao')
+#
+# plt.subplot(4, 2, 8)
+# plt.plot(tao_arr5, c='blue', linestyle=':', label='tao')
+# plt.show()

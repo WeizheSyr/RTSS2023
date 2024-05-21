@@ -234,14 +234,16 @@ class Simulator:
         # res = solve_ivp(self.ode, ts, self.cur_x, args=(self.cur_u,))
         self.cur_index += 1
         # self.cur_x = res.y[:, -1]
-        self.post_x = self.cur_y
+        # print('cur_feedback', self.cur_feedback[0])
+        self.post_x = self.cur_feedback
         if self.model_type == 'linear':
             # print('B, U', self.sysd.B.shape, self.cur_u.shape)
-            # print(self.cur_u)
+            # print('cur_x',self.cur_x[0])
             self.cur_x = self.sysd.A @ self.cur_x + self.sysd.B @ self.cur_u
         if self.p_noise is not None:  # process noise
             self.cur_x += self.p_noise[self.cur_index]
         self.cur_y = self.C @ self.cur_x + self.D @ self.cur_u
+        # print('cur_y', self.cur_y)
         if self.m_noise is not None:  # measurement noise
             self.cur_y += self.m_noise[self.cur_index]
         assert self.cur_x.shape == (self.n,)
@@ -253,7 +255,8 @@ class Simulator:
         if self.feedback_type:
             # self.cur_feedback = self.cur_x if self.feedback_type == 'state' else self.cur_y
             if self.feedback_type == 'state':
-                self.cur_feedback = deepcopy(self.cur_y)
+                # self.cur_feedback = deepcopy(self.cur_y)
+                self.cur_feedback = self.cur_y
             else:
                 self.cur_feedback = self.cur_y
             # print(self.cur_feedback)
@@ -262,7 +265,9 @@ class Simulator:
             self.cur_feedback = None
 
         # predict
+        # print('post_x', self.post_x[0])
         self.predict = self.sysd.A @ self.post_x + self.sysd.B @ self.cur_u
+        # print('predict', self.predict[0])
         # print(self.predict)
 
         return self.cur_index

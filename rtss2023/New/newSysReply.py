@@ -78,14 +78,13 @@ class Sys:
             if exp.model.cur_index >= exp.attack_start_index and exp.model.cur_index <= exp.attack_start_index + attack_duration - 1:
                 # attack here
                 attack_step = exp.model.cur_index - exp.attack_start_index
-                # exp.model.cur_feedback[0] = exp.model.cur_feedback[0] + attack[attack_step]
-                exp.model.cur_feedback[0] = exp.model.cur_feedback[0] + 0.01
-                print("attack", attack[attack_step])
+                exp.model.cur_feedback[0] = 0.98
+                # print("attack", attack[attack_step])
                 # sensor measurement with attack
                 self.x_tilda[-1] = exp.model.cur_feedback
 
             # residual calculator
-            print('x_tilda', self.x_tilda[self.i - 1][0])
+            # print('x_tilda', self.x_tilda[self.i - 1][0])
             residual = self.x_hat[self.i - 1] - self.x_tilda[self.i - 1]
             self.residuals.append(residual)
             self.detect_results.append(self.detector.detect(residual))
@@ -97,7 +96,7 @@ class Sys:
                 if self.alarm1st == 0:
                     self.alarm1st = self.i - 1
                 print("alarm at", exp.model.cur_index)
-            if self.i >= 60:
+            if self.i >= 70:
                 return
 
             # fixed detector

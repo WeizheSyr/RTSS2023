@@ -4,4 +4,5 @@ from .controllers import LQRSSE
 from .simulator import Simulator
 from .attack import Attack
 from .detector import windowBased
+from .detector import cusum1
 
