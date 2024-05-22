@@ -92,7 +92,7 @@ class Sys:
             alarm = self.detector.alarmOrN()
             temp = deepcopy(self.detector.tao)
             self.taus.append(temp)
-            print('sum residuals', sum(self.detector.queue[0]))
+            # print('sum residuals', sum(self.detector.queue[0]))
             if alarm:
                 if self.alarm1st == 0:
                     self.alarm1st = self.i - 1

@@ -287,12 +287,12 @@ class Reachability:
             if not self.newEqual(move, 0):
                 stop = 0
             start = start + move * E.g[:, i]
-            if self.point_in_box(start, D_lo, D_up):
+            if self.point_in_box(start, D_lo, D_up) and flag == 0:
                 flag = 1
 
             if i == ord - 1 and stop == 0:
                 iteration = iteration + 1
-                i = -1
+                i = i
                 stop = 1
             i = i + 1
         return start, dir, flag
