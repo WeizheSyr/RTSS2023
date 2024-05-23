@@ -1,4 +1,4 @@
-from newSys import Sys
+from newSysAnalyze import Sys
 from utils.Baseline import Platoon
 from utils.detector.windowBased import window
 from utils.detector.cusum1 import cusum
@@ -9,7 +9,7 @@ tao = np.ones(7) * 0.02
 detector = window(tao, 7, 10)
 tao1 = np.ones(7) * 0.022
 detector1 = window(tao1, 7, 10)
-cusum = cusum(tao1, 7, 10, noise=0.0022)
+cusum = cusum(tao1, 7, 10, noise=0.003)
 exp = Platoon
 attack = [np.array([0.01])] * 30
 attack_duration = 400
@@ -24,9 +24,9 @@ x_arr = [x[0] for x in sys.x]
 # x_arr = [x[0] for x in sys.taus]
 # np.save("data/1/x", sys.x)
 
-print("FP", sys.FP/150)
-print("FP1", sys.FP1/150)
-print("FP2", sys.FP2/150)
+print("FP", sys.FP/160)
+# print("FP1", sys.FP1/399)
+# print("FP2", sys.FP2/399)
 
 # print("recoverTime", sys.reach.recoverTime / sys.numOfRecover)
 # print("adjustTime", sys.adjustTime / sys.numOfAdjust)

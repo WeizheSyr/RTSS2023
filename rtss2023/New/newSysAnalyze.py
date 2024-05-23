@@ -21,7 +21,7 @@ class Sys:
         self.B = exp.model.sysd.B   # B
 
         # authentication
-        self.auth = Authenticate(exp.model, 4, p=0.002)  # 4 for platoon
+        self.auth = Authenticate(exp.model, 4, p=0.004)  # 4 for platoon
         self.auth_input = []                # authentication input queue
         self.auth_feed = []                 # authentication feedback queue
         self.auth_step = 0                   # timestep 7 for platoon
@@ -40,42 +40,26 @@ class Sys:
         self.pOrN = [0] * self.detector.m
 
         # recoverability
-        self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # noise
-        self.p_low = np.ones(7) * -0.002
-        self.p_up = np.ones(7) * 0.002
+        self.pz = Zonotope.from_box(np.ones(7) * -0.004, np.ones(7) * 0.004)    # noise
+        self.p_low = np.ones(7) * -0.004
+        self.p_up = np.ones(7) * 0.004
         self.uz = Zonotope.from_box(np.ones(4) * -2, np.ones(4) * 2)            # control box
         # self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
         # self.target_up = np.array([1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2])
 
-        self.target_low = np.array([0.4, 0.4, 0.4, -2, -2, -2, -2])
+        self.target_low = np.array([0.6, 0.6, 0.6, -2, -2, -2, -2])
         self.target_up = np.array([1.2, 1.2, 1.2, 2, 2, 2, 2])
         # self.target_low = np.array([0.8, 0.8, 0.8, -1, -1, -1, -1])
         # self.target_up = np.array([1.8, 1.8, 1.8, 1, 1, 1, 1])
 
         self.safe_low = np.array([-10, -10, -10, -10, -10, -10, -10])
         self.safe_up = np.array([10, 10, 10, 10, 10, 10, 10])
-        self.klevel = 3
-        self.klevels = []
         self.reach = Reachability(self.A, self.B, self.uz, self.pz, self.p_low, self.p_up, self.target_low, self.target_up, self.safe_low, self.safe_up)
         self.originalK = []
 
         # detector
         self.taus = []
-        self.alarm1st = 0
         self.FP = 0
-        self.alarm1st1 = 0
-        self.FP1 = 0
-        self.alarm1st2 = 0
-        self.FP2 = 0
-
-        self.recoverTime = 0
-        self.numOfRecover = 0
-        self.adjustTime = 0
-        self.numOfAdjust = 0
-        self.authTime = 0
-        self.numOfAuth = 0
-        self.errorTime = 0
-        self.numOfError = 0
 
         while True:
             first = 0
@@ -98,12 +82,10 @@ class Sys:
                 attack_step = exp.model.cur_index - exp.attack_start_index
                 # exp.model.cur_feedback[0] = exp.model.cur_feedback[0] + attack[attack_step]
                 # 0.01
-                # exp.model.cur_feedback[0] = exp.model.cur_feedback[0] + 0.01
-                # exp.model.post_x[0] = exp.model.post_x[0] + 0.01
+                exp.model.cur_feedback[0] = exp.model.cur_feedback[0] + 0.01
+                exp.model.post_x[0] = exp.model.post_x[0] + 0.01
                 # exp.model.cur_feedback[0] = exp.model.feedbacks[-1][0]
                 # exp.model.post_x[0] = exp.model.feedbacks[-1][0]
-                exp.model.cur_feedback[0] = 0.98
-                exp.model.post_x[0] = 0.98
                 print("attack")
                 # sensor measurement with attack
                 self.x_tilda[-1] = deepcopy(exp.model.post_x)
@@ -118,32 +100,30 @@ class Sys:
             self.taus.append(temp)
             # print('sum residuals', sum(self.detector.queue[0]))
             if alarm:
-                if self.alarm1st == 0:
-                    self.alarm1st = self.i - 1
                 print("alarm at", exp.model.cur_index)
                 if self.i < exp.attack_start_index:
                     self.FP += 1
-            if self.i >= 200:
+            if self.i >= 160:
                 return
 
-            # fixed detector
-            self.detector1.detect(residual)
-            alarm1 = self.detector1.alarmOrN()
-            if alarm1:
-                if self.alarm1st1 == 0:
-                    self.alarm1st1 = self.i - 1
-                if self.i < exp.attack_start_index:
-                    self.FP1 += 1
-                print("fixed at", exp.model.cur_index)
-            # cusum
-            self.cusum.detect(residual)
-            alarm2 = self.cusum.alarmOrN()
-            if alarm2:
-                if self.alarm1st2 == 0:
-                    self.alarm1st2 = self.i - 1
-                if self.i < exp.attack_start_index:
-                    self.FP2 += 1
-                print("cusum at", exp.model.cur_index)
+            # # fixed detector
+            # self.detector1.detect(residual)
+            # alarm1 = self.detector1.alarmOrN()
+            # if alarm1:
+            #     if self.alarm1st1 == 0:
+            #         self.alarm1st1 = self.i - 1
+            #     if self.i < exp.attack_start_index:
+            #         self.FP1 += 1
+            #     print("fixed at", exp.model.cur_index)
+            # # cusum
+            # self.cusum.detect(residual)
+            # alarm2 = self.cusum.alarmOrN()
+            # if alarm2:
+            #     if self.alarm1st2 == 0:
+            #         self.alarm1st2 = self.i - 1
+            #     if self.i < exp.attack_start_index:
+            #         self.FP2 += 1
+            #     print("cusum at", exp.model.cur_index)
 
 
             # authentication
@@ -163,11 +143,7 @@ class Sys:
                 self.auth.getInputs(authQueueInput1)
                 self.auth.getFeedbacks(authQueueFeed1)
 
-                start = time()
                 t = self.auth.getAuth()
-                end = time()
-                self.authTime += end - start
-                self.numOfAuth += 1
 
                 self.authT.append(exp.model.cur_index - self.auth.timestep)
                 if t and exp.model.cur_index <= exp.attack_start_index:
@@ -208,39 +184,25 @@ class Sys:
                             self.theta[self.authT[-1] + 1 + k] = theta1
 
             # error estimator
-            start = time()
             if len(self.authT) != 0:
                 theta1 = self.boundByDetector1(self.i - 1)
                 self.theta.append(theta1)
-            end = time()
-            self.errorTime += end -start
-            self.numOfError += 1
 
             # recoverability calculator
             if self.i >= 20:
                 thetaz = np.array(self.theta)
-
-
-                start = time()
                 recover = self.reach.recoverable(self.x_hat[-1], thetaz[-1, :, ])
-                end = time()
 
-                self.recoverTime += end - start
-                self.numOfRecover += 1
 
                 print("recoverable time window", recover)
-                start = time()
                 if recover[1] == 0:
-                    self.numOfAdjust += 1
                     delta_tau = self.reach.threshold_decrease(self.taus[-1][0])
                     self.detector.tao = self.detector.tao - delta_tau
 
                 elif recover[2] != 0:
-                    self.numOfAdjust += 1
                     delta_tau = self.reach.threshold_increase(self.taus[-1][0])
                     self.detector.tao = self.detector.tao + delta_tau
-                end = time()
-                self.adjustTime += end - start
+
 
 
 

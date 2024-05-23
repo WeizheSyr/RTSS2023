@@ -59,6 +59,8 @@ class Reachability:
         self.intersect = [[], [], []]
         self.empty = [[],[],[]]
 
+        self.recoverTime = 0
+
         self.k = 3
 
     def get_bound(self, X: Zonotope):
@@ -181,6 +183,8 @@ class Reachability:
 
         self.flag = [0, 0, 0]
         for j in range(3):
+            if j == 0:
+                start = time.time()
             for i in range(len(self.L_up[j])):
                 # check empty
                 if self.check_empty(self.D_lo[j][i], self.D_up[j][i]):
@@ -197,9 +201,13 @@ class Reachability:
                     self.alpha[j].append(alpha)
                     self.intersect[j].append(0)
                     self.empty[j].append(1)
+            if j == 0:
+                end = time.time()
+                self.recoverTime += end - start
         return self.flag
 
     def threshold_decrease(self, tau):
+        iteration = 0
         # increase recoverable time window
         j = 1
         # delta_tau = np.ones(self.A.shape[0]) * tau * 0.05
@@ -214,13 +222,15 @@ class Reachability:
                 # if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
                     stop = 1
                     break
-            if stop == 1:
+            if stop == 1 or iteration == 10:
                 break
             else:
                 delta_tau = delta_tau + 0.001
+            iteration += 1
         return delta_tau
 
     def threshold_increase(self, tau):
+        iteration = 0
         j = 2
         delta_tau = np.ones(self.A.shape[0]) * 0.001
         stop = 1
@@ -233,10 +243,11 @@ class Reachability:
                 if intersect == 1:
                 # if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
                     stop = 0
-            if stop == 1:
+            if stop == 1 or iteration == 10:
                 break
             else:
                 delta_tau = delta_tau + 0.001
+            iteration += 1
         return delta_tau
 
     def threshold_increase1(self, tau):
@@ -326,7 +337,7 @@ class Reachability:
 
             if i == ord - 1 and stop == 0:
                 iteration = iteration + 1
-                if iteration < 20:
+                if iteration < 10:
                     i = -1
                 # i = i
                 stop = 1

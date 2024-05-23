@@ -73,8 +73,8 @@ if __name__ == "__main__":
         assert rlc_circuit.cur_index == i
         rlc_circuit.update_current_ref(ref[i])
         # attack here
-        if i >= 200:
-            rlc_circuit.cur_feedback[0] = rlc_circuit.feedbacks[i-20][0]
+        # if i >= 200:
+        #     rlc_circuit.cur_feedback[0] = rlc_circuit.feedbacks[i-20][0]
         rlc_circuit.evolve()
     print(A)
     print(rlc_circuit.sysd.A)

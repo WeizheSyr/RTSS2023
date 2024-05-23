@@ -82,8 +82,8 @@ if __name__ == "__main__":
     noise = {
         'process': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(3) * 0.005,
-                      'up': np.ones(3) * 0.005}
+            'param': {'lo': np.ones(3) * 0.01,
+                      'up': np.ones(3) * 0.01}
         }
     }
     aircraft_pitch = AircraftPitch('test', dt, max_index, noise)
