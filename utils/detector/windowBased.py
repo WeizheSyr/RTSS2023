@@ -23,9 +23,11 @@ class window:
 
         self.rsum[dim] = sum(self.queue[dim])
         # print("dim, ", dim)
-        # print("residualsum", sum(self.queue[dim]))
+        if dim == 0:
+            print("residualsum", sum(self.queue[dim]))
 
         if sum(self.queue[dim]) > self.tao[dim]:
+            print("residualsum", sum(self.queue[dim]))
             return True    # alert
         else:
             return False    # no alert

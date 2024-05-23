@@ -1,6 +1,7 @@
 import numpy as np
 from utils.formal.zonotope import Zonotope
 import time
+from copy import deepcopy
 
 class Reachability:
     def __init__(self, A, B, U: Zonotope, P: Zonotope, v_lo, v_up, target_lo, target_up, safe_lo, safe_up, max_step=20):
@@ -23,7 +24,14 @@ class Reachability:
         self.A_i = [np.eye(A.shape[0])]
         for i in range(max_step):
             self.A_i.append(A @ self.A_i[-1])
-        self.abs_A_i = np.abs(self.A_i)
+        self.abs_A_i = deepcopy(self.A_i)
+        # for i in range(max_step):
+        #     for j in range(self.A.shape[0]):
+        #         for k in range(self.A.shape[0]):
+        #             self.abs_A_i[i][j][k] = np.abs(self.abs_A_i[i][j][k])
+        # self.inv_abs_A_i = self.abs_A_i
+        # for i in range(max_step):
+        #     self.inv_abs_A_i[i] = np.linalg.inv(self.inv_abs_A_i[i])
 
         # A^i BU
         self.A_i_B_U = [val @ B @ U for val in self.A_i]
@@ -137,8 +145,10 @@ class Reachability:
                     A_B_U_up = A_B_U_up + self.A_i_B_U_up[j + d - i - 1]
 
                 theta_lo, theta_up = self.get_bound(self.A_i[j + d] @ thetaz)
-                L_lo = self.A_i[j + d] @ x_hat + theta_lo + A_B_U_lo + self.Aip_lo[j + d - 1]
-                L_up = self.A_i[j + d] @ x_hat + theta_up + A_B_U_up + self.Aip_up[j + d - 1]
+                # L_lo = self.A_i[j + d] @ x_hat + theta_lo + A_B_U_lo + self.Aip_lo[j + d - 1]
+                # L_up = self.A_i[j + d] @ x_hat + theta_up + A_B_U_up + self.Aip_up[j + d - 1]
+                L_lo = self.A_i[j + d] @ x_hat + theta_lo + self.Aip_lo[j + d - 1]
+                L_up = self.A_i[j + d] @ x_hat + theta_up + self.Aip_up[j + d - 1]
                 if self.inBox(L_lo, L_up, self.s_lo, self.s_up):
                     self.L_lo[j - 1].append(L_lo)
                     self.L_up[j - 1].append(L_up)
@@ -189,39 +199,63 @@ class Reachability:
                     self.empty[j].append(1)
         return self.flag
 
-    def threshold_decrease(self):
+    def threshold_decrease(self, tau):
         # increase recoverable time window
         j = 1
-        delta_tau = np.ones(self.A.shape[0]) * 0.0005
+        # delta_tau = np.ones(self.A.shape[0]) * tau * 0.05
+        delta_tau = np.ones(self.A.shape[0]) * 0.001
         stop = 0
         while(True):
             for i in range(len(self.L_up[j])):
                 self.D_lo[j][i] = self.D_lo[j][i] - self.abs_A_i[j + i] @ delta_tau
                 self.D_up[j][i] = self.D_up[j][i] + self.abs_A_i[j + i] @ delta_tau
-                if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
+                closest, alpha, intersect = self.check_intersection(self.E[i], self.D_lo[j][i], self.D_up[j][i])
+                if intersect == 1:
+                # if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
                     stop = 1
                     break
             if stop == 1:
                 break
             else:
-                delta_tau = delta_tau + 0.0005
+                delta_tau = delta_tau + 0.001
         return delta_tau
 
-    def threshold_increase(self):
+    def threshold_increase(self, tau):
         j = 2
-        delta_tau = np.ones(self.A.shape[0]) * 0.0005
+        delta_tau = np.ones(self.A.shape[0]) * 0.001
         stop = 1
         while(True):
             # for i in range(len(self.L_up[j])):
             for i in range(np.sum(self.empty[j])):
                 self.D_lo[j][i] = self.D_lo[j][i] + self.abs_A_i[j + i] @ delta_tau
                 self.D_up[j][i] = self.D_up[j][i] - self.abs_A_i[j + i] @ delta_tau
-                if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
+                closest, alpha, intersect = self.check_intersection(self.E[i], self.D_lo[j][i], self.D_up[j][i])
+                if intersect == 1:
+                # if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
                     stop = 0
             if stop == 1:
                 break
             else:
-                delta_tau = delta_tau + 0.0005
+                delta_tau = delta_tau + 0.001
+        return delta_tau
+
+    def threshold_increase1(self, tau):
+        j = 2
+        delta_tau = np.ones(self.A.shape[0]) * 0.0006
+        stop = 1
+        while(True):
+            # for i in range(len(self.L_up[j])):
+            for i in range(np.sum(self.empty[j])):
+                self.D_lo[j][i] = self.D_lo[j][i] + self.abs_A_i[j + i] @ delta_tau
+                self.D_up[j][i] = self.D_up[j][i] - self.abs_A_i[j + i] @ delta_tau
+                closest, alpha, intersect = self.check_intersection(self.E[i], self.D_lo[j][i], self.D_up[j][i])
+                if intersect == 1:
+                # if self.point_in_box(self.cloest[j][i], self.D_lo[j][i], self.D_up[j][i]):
+                    stop = 0
+            if stop == 1:
+                break
+            else:
+                delta_tau = delta_tau + 0.0006
         return delta_tau
 
     # j = 1
@@ -292,7 +326,9 @@ class Reachability:
 
             if i == ord - 1 and stop == 0:
                 iteration = iteration + 1
-                i = i
+                if iteration < 20:
+                    i = -1
+                # i = i
                 stop = 1
             i = i + 1
         return start, dir, flag

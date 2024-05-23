@@ -11,16 +11,19 @@ B = [[0.232], [0.0203], [0]]
 C = [[0, 0, 1]]
 D = [[0]]
 
-x_0 = np.array([0.0, 0.0, 0.0])
-# x_0 = np.array([ 0.06278011, -0.00016815,  0.1694274 ])
+# x_0 = np.array([0.0, 0.0, 0.0])
+x_0 = np.array([ 0.003999, -0.00025584,  0.20114131 ])
 
 # control parameters
-# KP = 1.13
-# KI = 0.0253
-# KD = 0.0
-KP = 6
-KI = 0.014
-KD = 0.000
+KP = 1.13
+KI = 0.0253
+KD = 0.0
+# KP = 6
+# KI = 0.014
+# KD = 0.000
+# KP = 8
+# KI = 0.014
+# KD = 0.000
 control_limit = {'lo': [-20], 'up': [20]}
 
 class Controller:
@@ -73,21 +76,23 @@ class AircraftPitch(Simulator):
 
 
 if __name__ == "__main__":
-    max_index = 1500
+    max_index = 2000
     dt = 0.04
-    ref = [np.array([0.2])] * 1501
+    ref = [np.array([0.2])] * 2001
     noise = {
         'process': {
-            'type': 'white',
-            'param': {'C': np.eye(3) * 0.00002}
+            'type': 'box_uniform',
+            'param': {'lo': np.ones(3) * 0.005,
+                      'up': np.ones(3) * 0.005}
         }
     }
     aircraft_pitch = AircraftPitch('test', dt, max_index, noise)
     for i in range(0, max_index + 1):
         assert aircraft_pitch.cur_index == i
         aircraft_pitch.update_current_ref(ref[i])
-        # attack here
         aircraft_pitch.evolve()
+        # if i >500:
+        #     aircraft_pitch.cur_feedback[0] += 0.0005
 
     # print results
     import matplotlib.pyplot as plt
@@ -96,8 +101,9 @@ if __name__ == "__main__":
     ref = [x[0] for x in aircraft_pitch.refs[:max_index + 1]]
     y_arr = [x[0] for x in aircraft_pitch.outputs[:max_index + 1]]
 
-    plt.plot(t_arr, y_arr, t_arr, ref)
+    plt.plot(y_arr)
+    # plt.plot(t_arr, y_arr, t_arr, ref)
     plt.show()
 
-    u_arr = [x[0] for x in aircraft_pitch.inputs[:max_index + 1]]
-    plt.plot(t_arr, u_arr)
+    # u_arr = [x[3] for x in aircraft_pitch.inputs[:max_index + 1]]
+    # plt.plot(t_arr, u_arr)

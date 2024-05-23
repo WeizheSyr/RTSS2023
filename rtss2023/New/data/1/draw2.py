@@ -15,7 +15,7 @@ for i in range(len(x_arr)):
     else:
         x_ref.append(0.9870)
 
-plt.figure(figsize=(9,3))
+plt.figure(figsize=(7,3))
 plt.plot(x_arr, c='blue', linestyle='-')
 plt.plot(x_ref, c='grey', linestyle='--')
 

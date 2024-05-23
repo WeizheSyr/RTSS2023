@@ -4,6 +4,13 @@ from newRecoverability import Reachability
 from utils.formal.zonotope import Zonotope
 from copy import deepcopy
 
+from newSys import Sys
+from utils.Baseline import Lane
+from utils.detector.windowBased import window
+from utils.detector.cusum1 import cusum
+import matplotlib.pyplot as plt
+import numpy as np
+
 np.set_printoptions(suppress=True)
 
 
@@ -20,7 +27,7 @@ class Sys:
         self.B = exp.model.sysd.B   # B
 
         # authentication
-        self.auth = Authenticate(exp.model, 4)  # 4 for platoon
+        self.auth = Authenticate(exp.model, 1, p=0.002)  # 4 for platoon
         self.auth_input = []                # authentication input queue
         self.auth_feed = []                 # authentication feedback queue
         self.auth_step = 0                   # timestep 7 for platoon
@@ -39,20 +46,20 @@ class Sys:
         self.pOrN = [0] * self.detector.m
 
         # recoverability
-        self.pz = Zonotope.from_box(np.ones(7) * -0.002, np.ones(7) * 0.002)    # noise
-        self.p_low = np.ones(7) * -0.001
-        self.p_up = np.ones(7) * 0.001
-        self.uz = Zonotope.from_box(np.ones(4) * -2, np.ones(4) * 2)            # control box
+        self.pz = Zonotope.from_box(np.ones(4) * -0.002, np.ones(4) * 0.002)    # noise
+        self.p_low = np.ones(4) * -0.002
+        self.p_up = np.ones(4) * 0.002
+        self.uz = Zonotope.from_box(np.ones(1) * -0.26, np.ones(1) * 0.26)            # control box
         # self.target_low = np.array([0.4, 0.4, 0.4, -0.4, -0.4, -0.4, -0.4])
         # self.target_up = np.array([1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2])
 
-        self.target_low = np.array([0.4, 0.4, 0.4, -2, -2, -2, -2])
-        self.target_up = np.array([1.2, 1.2, 1.2, 2, 2, 2, 2])
-        # self.target_low = np.array([0.8, 0.8, 0.8, -1, -1, -1, -1])
-        # self.target_up = np.array([1.8, 1.8, 1.8, 1, 1, 1, 1])
+        # self.target_low = np.array([0.4, 0.4, 0.4, -1, -1, -1, -1])
+        # self.target_up = np.array([1.2, 1.2, 1.2, 1, 1, 1, 1])
+        self.target_low = np.array([-1, -1, -1, -1])
+        self.target_up = np.array([1, 1, 1, 1])
 
-        self.safe_low = np.array([-10, -10, -10, -10, -10, -10, -10])
-        self.safe_up = np.array([10, 10, 10, 10, 10, 10, 10])
+        self.safe_low = np.array([-20, -20, -20, -20])
+        self.safe_up = np.array([20, 20, 20, 20])
         self.klevel = 3
         self.klevels = []
         self.reach = Reachability(self.A, self.B, self.uz, self.pz, self.p_low, self.p_up, self.target_low, self.target_up, self.safe_low, self.safe_up)
@@ -88,17 +95,23 @@ class Sys:
                 attack_step = exp.model.cur_index - exp.attack_start_index
                 # exp.model.cur_feedback[0] = exp.model.cur_feedback[0] + attack[attack_step]
                 # 0.01
-                # exp.model.cur_feedback[0] = exp.model.cur_feedback[0] + 0.01
-                # exp.model.post_x[0] = exp.model.post_x[0] + 0.01
-                exp.model.cur_feedback[0] = exp.model.feedbacks[-1][0]
-                exp.model.post_x[0] = exp.model.feedbacks[-1][0]
+                exp.model.cur_feedback[0] = exp.model.cur_feedback[0] + 0.04
+                exp.model.post_x[0] = exp.model.post_x[0] + 0.04
+                # exp.model.cur_feedback[0] = exp.model.feedbacks[30][0]
+                # exp.model.post_x[0] = exp.model.feedbacks[30][0]
+                # exp.model.cur_feedback[0] = exp.model.feedbacks[-30][0]
+                # exp.model.post_x[0] = exp.model.feedbacks[-30][0]
+
                 print("attack")
                 # sensor measurement with attack
                 self.x_tilda[-1] = deepcopy(exp.model.post_x)
 
             # residual calculator
             # print('x_tilda', self.x_tilda[self.i - 1][0])
-            residual = self.x_hat[self.i - 1] - self.x_tilda[self.i - 1]
+            if self.i > 50:
+                residual = self.x_hat[self.i - 1] - self.x_tilda[self.i - 1]
+            else:
+                residual = self.x_hat[self.i - 1] - self.x_tilda[self.i - 1]
             self.residuals.append(residual)
             self.detect_results.append(self.detector.detect(residual))
             alarm = self.detector.alarmOrN()
@@ -109,9 +122,7 @@ class Sys:
                 if self.alarm1st == 0:
                     self.alarm1st = self.i - 1
                 print("alarm at", exp.model.cur_index)
-                if self.i < exp.attack_start_index:
-                    self.FP += 1
-            if self.i >= 399:
+            if self.i >= 1000:
                 return
 
             # fixed detector
@@ -122,7 +133,7 @@ class Sys:
                     self.alarm1st1 = self.i - 1
                 if self.i < exp.attack_start_index:
                     self.FP1 += 1
-                print("fixed at", exp.model.cur_index)
+                print("fixed alarm at", exp.model.cur_index)
             # cusum
             self.cusum.detect(residual)
             alarm2 = self.cusum.alarmOrN()
@@ -134,79 +145,79 @@ class Sys:
                 print("cusum at", exp.model.cur_index)
 
 
-            # authentication
-            if len(self.auth_input) == self.auth.timestep:
-                self.auth_input.pop()
-                self.auth_feed.pop()
-            self.auth_input.insert(0, exp.model.inputs[exp.model.cur_index - 1])
-            self.auth_feed.insert(0, exp.model.feedbacks[exp.model.cur_index - 1])
-
-            self.auth_step += 1
-            # if self.auth_step == self.auth.timestep:
-            if self.auth_step >= 3 and len(self.auth_input) == self.auth.timestep:
-                print("auth at ", self.i)
-                self.auth_step = 0
-                authQueueInput1 = self.auth_input[::-1]
-                authQueueFeed1 = self.auth_feed[::-1]
-                self.auth.getInputs(authQueueInput1)
-                self.auth.getFeedbacks(authQueueFeed1)
-                t = self.auth.getAuth()
-                self.authT.append(exp.model.cur_index - self.auth.timestep)
-                if t and exp.model.cur_index <= exp.attack_start_index:
-                    self.auth.getAllBound()
-                    print('auth x ', self.authT[-1])
-                else:
-                    print("auth failure")
-                    self.auth.x = self.x[self.authT[-1]]
-                    # for i in range(self.A.shape[0]):
-                    #     self.auth.bound[i, 0] = - np.abs(self.x[-1][i] - self.x_hat[-1][i]) * 2
-                    #     self.auth.bound[i, 1] = np.abs(self.x[-1][i] - self.x_hat[-1][i]) * 2
-                    if exp.model.cur_index >= exp.attack_start_index:
-                        for i in range(self.A.shape[0]):
-                            self.auth.bound[i, 0] = - np.abs(self.x[-1][i] - self.x_hat[-1][i]) * 20
-                            self.auth.bound[i, 1] = np.abs(self.x[-1][i] - self.x_hat[-1][i]) * 20
-                        print("theta", self.auth.bound[0, 1])
-                    else:
-                        for i in range(self.A.shape[0]):
-                            self.auth.bound[i, 0] = - 0.002 * 2
-                            self.auth.bound[i, 1] = 0.002 * 2
-
-                # from auth bound to theta
-                t = self.boundToTheta(self.auth.x, self.auth.bound, self.x_hat[self.authT[-1]])
-                if len(self.authT) == 1:
-                    self.theta.append(t)
-                else:
-                    self.theta[self.authT[-1]] = t
-
-                # update real state calculate
-                if self.i < 400:
-                    for k in range(self.auth.timestep - 2):
-                        theta1 = self.boundByDetector1(self.authT[-1] + 1 + k)
-                        # first time authentication
-                        if len(self.authT) == 1:
-                            self.theta.append(theta1)
-                        # Rewrite previous theta
-                        else:
-                            self.theta[self.authT[-1] + 1 + k] = theta1
-
-            # error estimator
-            if len(self.authT) != 0:
-                theta1 = self.boundByDetector1(self.i - 1)
-                self.theta.append(theta1)
-
-            # recoverability calculator
-            if self.i >= 20:
-                thetaz = np.array(self.theta)
-                recover = self.reach.recoverable(self.x_hat[-1], thetaz[-1, :, ])
-                print("recoverable time window", recover)
-                if recover[1] == 0:
-                    delta_tau = self.reach.threshold_decrease(self.taus[-1][0])
-                    self.detector.tao = self.detector.tao - delta_tau
-                    print(self.detector.tao)
-                elif recover[2] != 0:
-                    delta_tau = self.reach.threshold_increase(self.taus[-1][0])
-                    self.detector.tao = self.detector.tao + delta_tau
-                    print(self.detector.tao)
+            # # authentication
+            # if len(self.auth_input) == self.auth.timestep:
+            #     self.auth_input.pop()
+            #     self.auth_feed.pop()
+            # self.auth_input.insert(0, exp.model.inputs[exp.model.cur_index - 1])
+            # self.auth_feed.insert(0, exp.model.feedbacks[exp.model.cur_index - 1])
+            #
+            # self.auth_step += 1
+            # # if self.auth_step == self.auth.timestep:
+            # if self.auth_step >= 4 and len(self.auth_input) == self.auth.timestep:
+            #     print("auth at ", self.i)
+            #     self.auth_step = 0
+            #     authQueueInput1 = self.auth_input[::-1]
+            #     authQueueFeed1 = self.auth_feed[::-1]
+            #     self.auth.getInputs(authQueueInput1)
+            #     self.auth.getFeedbacks(authQueueFeed1)
+            #     t = self.auth.getAuth()
+            #     self.authT.append(exp.model.cur_index - self.auth.timestep)
+            #     if t and exp.model.cur_index <= exp.attack_start_index:
+            #         self.auth.getAllBound()
+            #         print('auth x ', self.authT[-1])
+            #     else:
+            #         print("auth failure")
+            #         self.auth.x = self.x[self.authT[-1]]
+            #         # for i in range(self.A.shape[0]):
+            #         #     self.auth.bound[i, 0] = - np.abs(self.x[-1][i] - self.x_hat[-1][i]) * 2
+            #         #     self.auth.bound[i, 1] = np.abs(self.x[-1][i] - self.x_hat[-1][i]) * 2
+            #         if exp.model.cur_index >= exp.attack_start_index:
+            #             for i in range(self.A.shape[0]):
+            #                 self.auth.bound[i, 0] = - np.abs(self.x[-1][i] - self.x_hat[-1][i]) * 8
+            #                 self.auth.bound[i, 1] = np.abs(self.x[-1][i] - self.x_hat[-1][i]) * 8
+            #             print("theta", self.auth.bound[0, 1])
+            #         else:
+            #             for i in range(self.A.shape[0]):
+            #                 self.auth.bound[i, 0] = - 0.003
+            #                 self.auth.bound[i, 1] = 0.003
+            #
+            #     # from auth bound to theta
+            #     t = self.boundToTheta(self.auth.x, self.auth.bound, self.x_hat[self.authT[-1]])
+            #     if len(self.authT) == 1:
+            #         self.theta.append(t)
+            #     else:
+            #         self.theta[self.authT[-1]] = t
+            #
+            #     # update real state calculate
+            #     if self.i < 100:
+            #         for k in range(self.auth.timestep - 2):
+            #             theta1 = self.boundByDetector1(self.authT[-1] + 1 + k)
+            #             # first time authentication
+            #             if len(self.authT) == 1:
+            #                 self.theta.append(theta1)
+            #             # Rewrite previous theta
+            #             else:
+            #                 self.theta[self.authT[-1] + 1 + k] = theta1
+            #
+            # # error estimator
+            # if len(self.authT) != 0:
+            #     theta1 = self.boundByDetector1(self.i - 1)
+            #     self.theta.append(theta1)
+            #
+            # # recoverability calculator
+            # if self.i >= 20:
+            #     thetaz = np.array(self.theta)
+            #     recover = self.reach.recoverable(self.x_hat[-1], thetaz[-1, :, ])
+            #     print("recoverable time window", recover)
+            #     if recover[1] == 0:
+            #         delta_tau = self.reach.threshold_decrease(self.taus[-1][0])
+            #         self.detector.tao = self.detector.tao - delta_tau
+            #         print(self.detector.tao)
+            #     elif recover[2] != 0:
+            #         delta_tau = self.reach.threshold_increase(self.taus[-1][0])
+            #         self.detector.tao = self.detector.tao + delta_tau
+            #         print(self.detector.tao)
 
 
             # after attack
@@ -280,6 +291,32 @@ class Sys:
                 else:
                     A_theta_lo += self.A[i][j] * self.theta[t - 1][j][1]
                     A_theta_up += self.A[i][j] * self.theta[t - 1][j][0]
-            theta1[i][0] = (-self.detector.tao +rsum + self.A @ (self.x_hat[t - 1] - self.x_tilda[t - 1]) - 0.002)[i] + A_theta_lo
-            theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.x_hat[t - 1] - self.x_tilda[t - 1]) + 0.002)[i] + A_theta_up
+            theta1[i][0] = (-self.detector.tao +rsum + self.A @ (self.x_hat[t - 1] - self.x_tilda[t - 1]) - 0.001)[i] + A_theta_lo
+            theta1[i][1] = (self.detector.tao - rsum + self.A @ (self.x_hat[t - 1] - self.x_tilda[t - 1]) + 0.001)[i] + A_theta_up
         return theta1
+
+
+tao = np.ones(4) * 0.08
+detector = window(tao, 4, 10)
+tao1 = np.ones(4) * 0.21
+detector1 = window(tao1, 4, 10)
+cusum = cusum(tao1, 4, 20, noise=0.03)
+exp = Lane
+attack = [np.array([0.01])] * 30
+attack_duration = 400
+
+sys = Sys(detector=detector, detector1=detector1, cusum=cusum ,exp=exp, attack=attack, attack_duration=attack_duration)
+
+print("FP1", sys.FP1/500)
+print("FP2", sys.FP2/500)
+
+max_index = sys.i
+x_arr = [x[0] for x in sys.x[:100]]
+# x_arr = [x[0] for x in sys.taus]
+# np.save("data/2/x_reply", sys.x)
+
+plt.figure()
+plt.plot(x_arr, c='blue', linestyle=':', label='x')
+# plt.plot((sys.x[sys.alarm1st][0], sys.alarm1st), 'o', color='black')
+# plt.plot((sys.x[sys.alarm1st1][0], sys.alarm1st1), 'v', color='yellow')
+plt.show()

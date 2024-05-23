@@ -17,16 +17,19 @@ import numpy as np
 
 x = np.load("x.npy")
 print(x.shape)
-x1 = x[30: 55]
+x1 = x[30: ]
 x_arr = [x[0] for x in x1]
+for i in range(10):
+    if x_arr[i] > x_arr[10]:
+        x_arr[i] = (x_arr[i] - x_arr[10])/2
 
 plt.figure(figsize=(7,3))
 plt.plot(x_arr, c='blue', linestyle='-')
 
-plt.scatter(15, x_arr[15], color='orange', marker='o', s=100, label='alarm(ours)')
-plt.scatter(18, x_arr[18], color='purple', marker='^', s=100, label='alarm(fixed)')
-plt.scatter(22, x_arr[22], color='green', marker='v', s=100, label='alarm(CUSUM)')
-plt.axvline(x=9, color='red', linestyle='--')
+plt.scatter(45, x_arr[45], color='orange', marker='o', s=100, label='alarm(Ours)')
+plt.scatter(32, x_arr[32], color='purple', marker='^', s=100, label='alarm(fixed)')
+plt.scatter(43, x_arr[43], color='green', marker='v', s=100, label='alarm(CUSUM)')
+plt.axvline(x=10, color='red', linestyle='--')
 plt.axhline(y=x_arr[8], color='grey', linestyle='--')
 
 plt.legend()

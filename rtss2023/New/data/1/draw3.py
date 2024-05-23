@@ -8,7 +8,7 @@ x_arr = [x[0] for x in x1]
 # x_arr[5] = x_arr[4]
 x_arr[11] = (x_arr[10] + x_arr[12])/2
 
-plt.figure(figsize=(9,3))
+plt.figure(figsize=(7,3))
 plt.plot(x_arr, c='blue', linestyle='-')
 
 plt.scatter(22, x_arr[22], color='orange', marker='o', s=100, label='alarm(ours)')

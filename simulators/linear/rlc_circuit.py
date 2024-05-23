@@ -73,6 +73,8 @@ if __name__ == "__main__":
         assert rlc_circuit.cur_index == i
         rlc_circuit.update_current_ref(ref[i])
         # attack here
+        if i >= 200:
+            rlc_circuit.cur_feedback[0] = rlc_circuit.feedbacks[i-20][0]
         rlc_circuit.evolve()
     print(A)
     print(rlc_circuit.sysd.A)
@@ -80,9 +82,11 @@ if __name__ == "__main__":
     # print results
     import matplotlib.pyplot as plt
 
-    t_arr = np.linspace(0, 10, max_index + 1)
-    ref = [x[1] for x in rlc_circuit.states[:max_index + 1]]
-    y_arr = [x[0] for x in rlc_circuit.states[:max_index + 1]]
+    # t_arr = np.linspace(0, 10, max_index + 1)
+    # ref = [x[1] for x in rlc_circuit.states[:max_index + 1]]
+    y_arr = [x[0] for x in rlc_circuit.states[100:max_index + 1]]
 
-    plt.plot(t_arr, y_arr, t_arr, ref)
+    plt.plot(y_arr)
+    # plt.plot(t_arr, y_arr)
+    # plt.plot(t_arr, y_arr, t_arr, ref)
     plt.show()

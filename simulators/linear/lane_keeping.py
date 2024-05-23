@@ -95,8 +95,8 @@ if __name__ == "__main__":
             # 'type': 'white',
             # 'param': {'C': np.eye(4) * 0.0001}
             'type': 'box_uniform',
-            'param': {'lo': np.ones(4) * -0.002,
-                      'up': np.ones(4) * 0.002}
+            'param': {'lo': np.ones(4) * -0.01,
+                      'up': np.ones(4) * 0.01}
         }
     }
     lk = LaneKeeping('test', dt, max_index, noise)
@@ -105,6 +105,8 @@ if __name__ == "__main__":
         lk.update_current_ref(ref[i])
         # attack here
         lk.evolve()
+        print(lk.cur_x)
+        # print(lk.cur_u)
     # print results
     import matplotlib.pyplot as plt
 

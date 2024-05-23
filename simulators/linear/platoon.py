@@ -84,6 +84,7 @@ class Platoon(Simulator):
         if noise:
             settings['noise'] = noise
         settings['init_state'] = [0.98335375,1.00585546,0.9830338,0.98461937,0.98400174,0.9836474,0.99257253]
+        # settings['init_state'] = [1, 1, 1, 1, 1, 1, 1]
         self.sim_init(settings)
 
     def __del__(self):
@@ -112,6 +113,8 @@ if __name__ == "__main__":
         assert platoon.cur_index == i
         platoon.update_current_ref(ref[i])
         # attack here
+        if i > 100:
+            platoon.cur_feedback[0] = platoon.cur_feedback[0] + 0.01
         platoon.evolve()
         if i == 200:
             print(platoon.cur_x)

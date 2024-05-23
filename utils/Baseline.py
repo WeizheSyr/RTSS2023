@@ -9,7 +9,7 @@ from utils.attack import Attack
 
 class rlc_circuit_bias:
     name = 'rlc_circuit'
-    max_index = 500
+    max_index = 100
     dt = 0.02
     # ref = [np.array([2])] * (max_index + 1)
     ref = [np.array([2])] * 201 + [np.array([2])] * 200 + [np.array([2])] * 100
@@ -21,7 +21,7 @@ class rlc_circuit_bias:
         }
     }
     model = RlcCircuit('test', dt, max_index, noise)
-    attack_start_index = 400
+    attack_start_index = 60
     # bias = np.array([0, 0, 0, 0])
     # attack = Attack('bias', bias, attack_start_index)
 
@@ -77,38 +77,39 @@ class Platoon:
     max_index = 400
     dt = 0.04
     # ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
-    ref = [np.array([1])] * 201
+    ref = [np.array([1])] * 401
+    # ref = [np.array([1])] * 100 + [np.array([1.1])] * 201
     noise = {
         'process': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.00,
-                      'up': np.ones(7) * 0.00}
+            'param': {'lo': np.ones(7) * -0.002,
+                      'up': np.ones(7) * 0.002}
         },
         'measurement': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(7) * -0.001,
-                      'up': np.ones(7) * 0.001}
+            'param': {'lo': np.ones(7) * -0.00,
+                      'up': np.ones(7) * 0.00}
         }
     }
     model = Platoon('test', dt, max_index, noise)
     # attack_start_index = 400        # for time-consuming
     # attack_start_index = 55     # for three detector
-    attack_start_index = 40
+    attack_start_index = 1000
 
 class Lane:
     name = 'LaneKeeping'
     max_index = 1000
     dt = 0.04
-    # ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
     ref = [np.array([0, 0, 0, 0])] * (max_index + 1)
+    # ref = [np.array([0, 0, 0, 0])] * 40 + [np.array([0.05, 0, 0, 0])] * (max_index + 1)
     noise = {
         'process': {
             'type': 'box_uniform',
-            'param': {'lo': np.ones(4) * -0.002,
-                      'up': np.ones(4) * 0.002}
+            'param': {'lo': np.ones(4) * -0.01,
+                      'up': np.ones(4) * 0.01}
         }
     }
     model = LaneKeeping('test', dt, max_index, noise)
     # attack_start_index = 400        # for time-consuming
     # attack_start_index = 55     # for three detector
-    attack_start_index = 65
+    attack_start_index = 500

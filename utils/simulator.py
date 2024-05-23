@@ -67,6 +67,7 @@ class Simulator:
         self.p_noise_dist_1 = None
         self.predict = None
         self.post_x = None
+        self.x_for_predict = None
 
     def data_init(self):
         self.inputs = np.empty((self.max_index + 2, self.m), dtype=float)
@@ -234,16 +235,19 @@ class Simulator:
         # res = solve_ivp(self.ode, ts, self.cur_x, args=(self.cur_u,))
         self.cur_index += 1
         # self.cur_x = res.y[:, -1]
-        # print('cur_feedback', self.cur_feedback[0])
-        self.post_x = self.cur_feedback
+        # self.post_x = self.cur_feedback
+
         if self.model_type == 'linear':
-            # print('B, U', self.sysd.B.shape, self.cur_u.shape)
-            # print('cur_x',self.cur_x[0])
             self.cur_x = self.sysd.A @ self.cur_x + self.sysd.B @ self.cur_u
         if self.p_noise is not None:  # process noise
-            self.cur_x += self.p_noise[self.cur_index]
-        self.cur_y = self.C @ self.cur_x + self.D @ self.cur_u
-        # print('cur_y', self.cur_y)
+            # self.cur_x += self.p_noise[self.cur_index]
+            # add
+            self.sensor_x = deepcopy(self.cur_x)
+            self.sensor_x += self.p_noise[self.cur_index]
+        # self.cur_y = self.C @ self.cur_x + self.D @ self.cur_u
+        # add
+        self.cur_y = self.C @ self.sensor_x + self.D @ self.cur_u
+
         if self.m_noise is not None:  # measurement noise
             self.cur_y += self.m_noise[self.cur_index]
         assert self.cur_x.shape == (self.n,)
@@ -256,17 +260,20 @@ class Simulator:
             # self.cur_feedback = self.cur_x if self.feedback_type == 'state' else self.cur_y
             if self.feedback_type == 'state':
                 # self.cur_feedback = deepcopy(self.cur_y)
-                self.cur_feedback = self.cur_y
+                self.cur_feedback = deepcopy(self.sensor_x)
             else:
                 self.cur_feedback = self.cur_y
-            # print(self.cur_feedback)
             # self.cur_feedback may be attacked before implement
         else:
             self.cur_feedback = None
 
         # predict
         # print('post_x', self.post_x[0])
-        self.predict = self.sysd.A @ self.post_x + self.sysd.B @ self.cur_u
+        if self.cur_index < 10:
+            self.predict = deepcopy(self.cur_x)
+        else:
+            self.predict = self.sysd.A @ self.post_x + self.sysd.B @ self.cur_u
+        self.post_x = deepcopy(self.sensor_x)
         # print('predict', self.predict[0])
         # print(self.predict)
 
