@@ -229,7 +229,7 @@ class Reachability:
             if i == ord - 1:
                 # print("one iteration")
                 iteration += 1
-                if iteration >= 50:
+                if iteration >= 1:
                     break
                 if usedout == 0:
                     i = -1

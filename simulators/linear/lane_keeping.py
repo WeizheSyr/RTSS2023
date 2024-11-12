@@ -44,7 +44,6 @@ R = np.eye(1) * 10
 
 control_limit = { 'lo': np.array([-0.261799]), 'up': np.array([0.261799])}
 
-
 class Controller:
     def __init__(self, dt):
         self.lqr = LQR(A, B, Q, R)

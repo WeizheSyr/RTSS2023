@@ -36,6 +36,15 @@ tao_arr3 = [x[3] for x in sys.taos]
 
 reach = [x for x in sys.klevels]
 
+avg_adj = sum(sys.time_adjs) / len(sys.time_adjs)
+avg_auth = sum(sys.time_auths) / len(sys.time_auths)
+avg_reco = sum(sys.time_recovers) / len(sys.time_recovers)
+avg_err = sum(sys.time_errors) / len(sys.time_errors)
+print("avg_adj", avg_adj)
+print("avg_auth", avg_auth)
+print("avg_reco", avg_reco)
+print("avg_err", avg_err)
+
 plt.figure()
 plt.subplot(4, 2, 1)
 plt.plot(x_low, c='red', linestyle=':', label='x_low')
